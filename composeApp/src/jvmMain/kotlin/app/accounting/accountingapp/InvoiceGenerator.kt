@@ -9,13 +9,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
@@ -41,7 +42,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
 
 
     val hourFocusRequester = remember { FocusRequester() }
-
+    var showDeleteSuggestionsDialog by remember { mutableStateOf(false) }
 
 // State mit dem heutigen Datum initialisieren
     var dateField by remember {
@@ -119,9 +120,10 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     .weight(1f),
 
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                //  verticalArrangement = Arrangement.Center
             ) {
 
+                Spacer(modifier = Modifier.weight(1f))
 
                 ComposeDatePicker(
                     selectedDate = dateField,
@@ -153,8 +155,6 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     //colors = OutlinedTextFieldDefaults.colors(
                     //  focusedContainerColor = Color.White,   // Farbe wenn man reinklickt
                     //    unfocusedContainerColor = Color.White, // Farbe wenn nicht ausgewählt
-                    // Falls deine Cards eine spezielle Farbe haben (z.B. MaterialTheme.colorScheme.surface),
-                    // nimm stattdessen diese Variable.
                     // ),
                     trailingIcon = {
                         Text(
@@ -181,9 +181,9 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                 expanded = it.isNotEmpty()
                             }
                         },
-                        label = { Text("Klasse/Unterrichtsfach") },
+                        label = { Text("Klasse/Fach") },
                         textStyle = TextStyle(
-                            fontSize = 16.sp, // Macht das Eingetippte größer
+                            fontSize = 16.sp,
                             // fontWeight = FontWeight.Bold // Optional: fett
                         ),
                         singleLine = true,
@@ -228,14 +228,13 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                         val tempInvoice = InvoiceData(invoiceNumber, updatedEntries, rate)
                                         val currentCost =
                                             if (showUELabel) tempInvoice.totalCostsLessonUnits else tempInvoice.totalCostsHours
-                                        val currentUE =
-                                            if (showUELabel) tempInvoice.totalHours else tempInvoice.totalLessonUnit
+                                        if (showUELabel) tempInvoice.totalHours else tempInvoice.totalLessonUnit
                                         val year = if (dateField.length >= 4) dateField.takeLast(4) else currentYear
 
                                         SuggestionsManager.saveTotalsOnly(
                                             invoiceNumber = invoiceNumber,
                                             totalCost = currentCost.toString(),
-                                            totalUE = currentUE.toString(),
+                                            //  totalUE = currentUE.toString(),
                                             year = year
                                         )
 
@@ -271,28 +270,30 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                 try {
                                     val updatedEntries = entries - toDelete.toSet()
 
-                                    // Alle Schreibvorgänge im Hintergrund erledigen
+                                    // Alle Schreibvorgänge im Hintergrund auf dem IO-Thread
                                     withContext(Dispatchers.IO) {
+                                        // 1. Die aktualisierte Liste der Einträge speichern
                                         SuggestionsManager.saveInvoiceEntries(invoiceNumber, updatedEntries)
 
+                                        // 2. Neue Summe berechnen (basierend auf der verbleibenden Liste)
                                         val tempInvoice = InvoiceData(invoiceNumber, updatedEntries, rate)
-                                        val currentCost =
+                                        val finalSum =
                                             if (showUELabel) tempInvoice.totalCostsLessonUnits else tempInvoice.totalCostsHours
-                                        val currentUE =
-                                            if (showUELabel) tempInvoice.totalHours else tempInvoice.totalLessonUnit
+
+                                        // 3. Das Jahr bestimmen
                                         val year = updatedEntries.firstOrNull()?.date?.takeLast(4) ?: currentYear
 
+                                        // 4. Die Jahres-Statistik-Datei aktualisieren
                                         SuggestionsManager.saveTotalsOnly(
                                             invoiceNumber = invoiceNumber,
-                                            totalCost = currentCost.toString(),
-                                            totalUE = currentUE.toString(),
+                                            totalCost = finalSum.toString(),
                                             year = year
                                         )
 
-                                        // UI-Updates auf dem Main Thread bündeln
+                                        // 5. Zurück zum Main-Thread für die UI-Updates
                                         withContext(Dispatchers.Main) {
                                             entries = updatedEntries
-                                            // Checkboxen sicher aufräumen
+                                            // Ausgewählte Checkboxen zurücksetzen
                                             toDelete.forEach { checkedEntries.remove(it) }
                                         }
                                     }
@@ -332,7 +333,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                 }
 
                                 // Verzögerung Animation
-                                kotlinx.coroutines.delay(500)
+                                kotlinx.coroutines.delay(700)
 
                             } catch (e: Exception) {
                                 // Falls z.B. die Festplatte voll ist oder das PDF offen und blockiert ist
@@ -352,9 +353,56 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
+                // --- 1. Der Platzhalter, der die unteren Buttons nach unten schiebt ---
+                Spacer(modifier = Modifier.weight(1f))
 
+                //Buttons Zurück, Beenden, Löschen
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // ZURÜCK
+                    SmallFloatingActionButton(
+                        onClick = onBack,
+                        shape = CircleShape,
+                        containerColor = Color(0xFFEDCDFD),
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Zurück", tint = MaterialTheme.colorScheme.primary)
+                    }
+
+
+                    SmallFloatingActionButton(
+                        onClick = onCloseApp,
+                        shape = CircleShape,
+                        containerColor = Color(0xFFEDCDFD),
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(Icons.Default.Close, "Beenden", tint = MaterialTheme.colorScheme.primary)
+                    }
+
+                    // Vorschläge löschen
+                    SmallFloatingActionButton(
+                        onClick = {
+                            showDeleteSuggestionsDialog = true
+                        },
+                        shape = CircleShape,
+                        containerColor = Color(0xFFEDCDFD),
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteForever,
+                            "Vorschläge löschen",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // Abstand zum ganz unteren Bildschirmrand
+                Spacer(modifier = Modifier.height(16.dp))
 
             }
+
 
             // Right Column
             Column(
@@ -378,7 +426,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Header Carc
+                // Header Card
                 Card(
                     modifier = Modifier
                         .fillMaxWidth().padding(bottom = 8.dp)
@@ -612,40 +660,49 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
             }
         }
 
-        FloatingActionButton(
-            onClick = onBack,
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(24.dp)
-                .size(56.dp) // Standard-Größe für FAB
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go Back",
-                tint = Color.White
-            )
 
+        if (showDeleteSuggestionsDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteSuggestionsDialog = false },
+                modifier = Modifier.border(
+                    width = 2.dp,
+                    color = Color.Black,
+                    shape = RoundedCornerShape(28.dp)
+                ),
+                containerColor = Color(0xFFEDCDFD),
+                title = {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("Vorschläge löschen", fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = {
+                    Text(
+                        "Möchtest du wirklich alle gespeicherten Vorschläge für 'Klasse/Fach' unwiderruflich löschen?",
+                        textAlign = TextAlign.Center
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            scope.launch(Dispatchers.IO) {
+                                SuggestionsManager.clearAll()
+                                withContext(Dispatchers.Main) {
+                                    allSuggestions = emptyList()
+                                    showDeleteSuggestionsDialog = false
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Löschen", color = Color.Red, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteSuggestionsDialog = false }) {
+                        Text("Abbrechen", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            )
         }
 
-        // BEENDEN BUTTON
-        FloatingActionButton(
-            onClick = onCloseApp,
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .align(BiasAlignment(horizontalBias = -0.0f, verticalBias = 1.0f))
-                .padding(bottom = 24.dp)
-                .size(56.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Beenden",
-                tint = Color.White,
-            )
-        }
-
-
-    }
+    } // Ende der Haupt-Box
 }

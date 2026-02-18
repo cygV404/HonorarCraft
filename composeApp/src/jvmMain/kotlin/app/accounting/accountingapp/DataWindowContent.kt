@@ -1,13 +1,16 @@
 package app.accounting.accountingapp
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,10 +30,11 @@ import java.io.File
 @Composable
 fun DataWindowContent(onClose: () -> Unit) {
 
-    val loaded = loadCompanyData()
+    val loaded = remember { loadCompanyData() }
     val scope = rememberCoroutineScope()
     var showLoader by remember { mutableStateOf(false) }
-
+    var showResetDialog by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     // States für die linke Spalte
     var eduCenter by remember { mutableStateOf(loaded?.eduCenter ?: "") }
     var locationNr by remember { mutableStateOf(loaded?.locationNr ?: "") }
@@ -36,6 +42,7 @@ fun DataWindowContent(onClose: () -> Unit) {
     var customerSecondNameOrOrga by remember { mutableStateOf(loaded?.customerSecondNameOrOrga ?: "") }
     var customerFirstName by remember { mutableStateOf(loaded?.customerFirstName ?: "") }
     var customerStreet by remember { mutableStateOf(loaded?.customerStreet ?: "") }
+    var customerStreetNumber by remember { mutableStateOf(loaded?.customerStreetNumber ?: "") }
     var hourRate by remember { mutableStateOf(loaded?.hourRate ?: "") }
     var customerPlz by remember { mutableStateOf(loaded?.customerPlz ?: "") }
     var customerCityName by remember { mutableStateOf(loaded?.customerCityName ?: "") }
@@ -46,6 +53,7 @@ fun DataWindowContent(onClose: () -> Unit) {
     var billerSecondName by remember { mutableStateOf(loaded?.billerSecondName ?: "") }
     var billerFirstName by remember { mutableStateOf(loaded?.billerFirstName ?: "") }
     var billerStreetName by remember { mutableStateOf(loaded?.billerStreetName ?: "") }
+    var billerStreetNumber by remember { mutableStateOf(loaded?.billerStreetNumber ?: "") }
     var billerPlzNumber by remember { mutableStateOf(loaded?.billerPlzNumber ?: "") }
     var billerCityName by remember { mutableStateOf(loaded?.billerCityName ?: "") }
     var billerIban by remember { mutableStateOf(loaded?.billerIban ?: "") }
@@ -53,8 +61,45 @@ fun DataWindowContent(onClose: () -> Unit) {
     var signaturePath by remember { mutableStateOf(loaded?.signaturePath ?: "") }
     var taxNumber by remember { mutableStateOf(loaded?.taxNumber ?: "") }
 
+    var isEditingIban by remember { mutableStateOf(false) }
+    var isEditingBic by remember { mutableStateOf(false) }
+    var isEditingTax by remember { mutableStateOf(false) }
 
-    // Die Box erlaubt das Übereinanderlegen von Elementen (FAB über die Row)
+    val hasChanges by remember {
+        derivedStateOf {
+            eduCenter != (loaded?.eduCenter ?: "") ||
+                    locationNr != (loaded?.locationNr ?: "") ||
+                    schoolType != (loaded?.schoolType ?: "") ||
+                    customerSecondNameOrOrga != (loaded?.customerSecondNameOrOrga ?: "") ||
+                    customerFirstName != (loaded?.customerFirstName ?: "") ||
+                    customerStreet != (loaded?.customerStreet ?: "") ||
+                    customerStreetNumber != (loaded?.customerStreetNumber ?: "") ||
+                    customerPlz != (loaded?.customerPlz ?: "") ||
+                    customerCityName != (loaded?.customerCityName ?: "") ||
+                    customerMailBox != (loaded?.customerMailBox ?: "") ||
+                    hourRate != (loaded?.hourRate ?: "") ||
+                    pdfPath != (loaded?.pdfPath ?: "") ||
+                    billerSecondName != (loaded?.billerSecondName ?: "") ||
+                    billerFirstName != (loaded?.billerFirstName ?: "") ||
+                    billerStreetName != (loaded?.billerStreetName ?: "") ||
+                    billerStreetNumber != (loaded?.billerStreetNumber ?: "") ||
+                    billerPlzNumber != (loaded?.billerPlzNumber ?: "") ||
+                    billerCityName != (loaded?.billerCityName ?: "") ||
+                    billerIban != (loaded?.billerIban ?: "") ||
+                    billerBIC != (loaded?.billerBIC ?: "") ||
+                    taxNumber != (loaded?.taxNumber ?: "") ||
+                    signaturePath != (loaded?.signaturePath ?: "")
+        }
+    }
+
+
+    // Hilfsfunktion für die Sternchen-Maskierung
+    fun getMaskedValue(isEditing: Boolean, actualValue: String): String {
+        return if (isEditing) actualValue else if (actualValue.isBlank()) "" else "********************"
+    }
+
+
+    // Box erlaubt das Übereinanderlegen von Elementen (FAB über die Row)
     Box(modifier = Modifier.fillMaxSize()) {
 
         Row(
@@ -79,7 +124,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = locationNr,
                     onValueChange = { locationNr = it },
@@ -87,7 +132,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = schoolType,
                     onValueChange = { schoolType = it },
@@ -95,7 +140,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = customerSecondNameOrOrga,
                     onValueChange = { customerSecondNameOrOrga = it },
@@ -103,7 +148,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = customerFirstName,
                     onValueChange = { customerFirstName = it },
@@ -111,15 +156,27 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = customerStreet,
                     onValueChange = { customerStreet = it },
-                    label = { Text("Empfänger: Straße, Hausnr.") },
+                    label = { Text("Empfänger: Straße") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = customerStreetNumber,
+                    onValueChange = { customerStreetNumber = it },
+                    label = { Text("Empfänger: Hausnr.") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(4.dp))
+
+
+
+
                 OutlinedTextField(
                     value = customerPlz,
                     onValueChange = { customerPlz = it },
@@ -127,7 +184,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = customerMailBox,
                     onValueChange = { customerMailBox = it },
@@ -135,7 +192,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = customerCityName,
                     onValueChange = { customerCityName = it },
@@ -144,7 +201,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 // Unterschrift Pfad-Auswahl
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -198,7 +255,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = billerFirstName,
                     onValueChange = { billerFirstName = it },
@@ -206,15 +263,28 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = billerStreetName,
                     onValueChange = { billerStreetName = it },
-                    label = { Text("Straße, Hausnr.") },
+                    label = { Text("Straße") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
+
+                OutlinedTextField(
+                    value = billerStreetNumber,
+                    onValueChange = { billerStreetNumber = it },
+                    label = { Text("Hausnr.") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(4.dp))
+
+
+
+
                 OutlinedTextField(
                     value = billerPlzNumber,
                     onValueChange = { billerPlzNumber = it },
@@ -222,7 +292,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = billerCityName,
                     onValueChange = { billerCityName = it },
@@ -230,31 +300,45 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+
+                Spacer(Modifier.height(4.dp))
+
                 OutlinedTextField(
-                    value = billerIban,
-                    onValueChange = { billerIban = it },
+                    value = getMaskedValue(isEditingIban, billerIban),
+                    onValueChange = {
+                        isEditingIban = true
+                        billerIban = it
+                    },
                     label = { Text("IBAN") },
+                    placeholder = { Text("Neue IBAN eingeben zum Ändern") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = billerBIC,
-                    onValueChange = { billerBIC = it },
+                    value = getMaskedValue(isEditingBic, billerBIC),
+                    onValueChange = {
+                        isEditingBic = true
+                        billerBIC = it
+                    },
                     label = { Text("BIC") },
+                    placeholder = { Text("Neue BIC eingeben zum Ändern") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = taxNumber,
-                    onValueChange = { taxNumber = it },
+                    value = getMaskedValue(isEditingTax, taxNumber),
+                    onValueChange = {
+                        isEditingTax = true
+                        taxNumber = it
+                    },
                     label = { Text("Steuernummer") },
+                    placeholder = { Text("Neue Steuernummer eingeben zum Ändern") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(
                     value = hourRate,
                     onValueChange = { hourRate = it },
@@ -262,7 +346,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 // Dateipfad-Auswahl für Unterschrift
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -301,89 +385,105 @@ fun DataWindowContent(onClose: () -> Unit) {
         }
 
 
-        FloatingActionButton(
-            onClick = {
-                // Nur ausführen, wenn nicht bereits ein Speichervorgang läuft
-                if (!showLoader) {
-                    scope.launch {
-                        try {
-                            showLoader = true
-                            withContext(Dispatchers.IO) {
-                                saveCompanyData(
-                                    CompanyData(
-                                        eduCenter = eduCenter,
-                                        locationNr = locationNr,
-                                        schoolType = schoolType,
-                                        customerSecondNameOrOrga = customerSecondNameOrOrga,
-                                        customerFirstName = customerFirstName,
-                                        customerStreet = customerStreet,
-                                        hourRate = hourRate,
-                                        billerSecondName = billerSecondName,
-                                        billerFirstName = billerFirstName,
-                                        billerStreetName = billerStreetName,
-                                        billerPlzNumber = billerPlzNumber,
-                                        billerCityName = billerCityName,
-                                        taxNumber = taxNumber,
-                                        billerIban = billerIban,
-                                        billerBIC = billerBIC,
-                                        customerPlz = customerPlz,
-                                        customerCityName = customerCityName,
-                                        customerMailBox = customerMailBox,
-                                        signaturePath = signaturePath,
-                                        pdfPath = pdfPath
-                                    )
-                                )
-                            }
-                            kotlinx.coroutines.delay(500) // UX Pause
-
-                        } catch (e: Exception) {
-                            println("Fehler beim Speichern: ${e.message}")
-                        } finally {
-                            showLoader = false
-                        }
-                    }
-                }
-            },
-            shape = CircleShape,
-            // Wenn showLoader true ist, wird die Farbe auf Grau gesetzt
-            containerColor = if (showLoader) Color.Gray else MaterialTheme.colorScheme.primary,
+        // --- Button Reihe unten mittig ---
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(24.dp)
-                .size(56.dp)
+                .padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp), // Kompakt nebeneinander
+            verticalAlignment = Alignment.CenterVertically
         ) {
 
-            Icon(
-                imageVector = Icons.Default.Save,
-                contentDescription = "Speichern",
-                tint = if (showLoader) Color.LightGray else MaterialTheme.colorScheme.onPrimary
-            )
-        }
+            // 1. Zurück Button
+            SmallFloatingActionButton(
+                onClick = {
+                    if (hasChanges) {
+                        showUnsavedChangesDialog = true
+                    } else {
+                        onClose()
+                    }
+                },
+                shape = CircleShape,
+                containerColor = Color(0xFFEDCDFD),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Go Back",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
 
+            // 2. Speichern Button
+            FloatingActionButton(
+                onClick = {
+                    if (!showLoader) {
+                        scope.launch {
+                            try {
+                                showLoader = true
+                                withContext(Dispatchers.IO) {
+                                    saveCompanyData(
+                                        CompanyData(
+                                            eduCenter = eduCenter,
+                                            locationNr = locationNr,
+                                            schoolType = schoolType,
+                                            customerSecondNameOrOrga = customerSecondNameOrOrga,
+                                            customerFirstName = customerFirstName,
+                                            customerStreet = customerStreet,
+                                            customerStreetNumber = customerStreetNumber,
+                                            hourRate = hourRate,
+                                            billerSecondName = billerSecondName,
+                                            billerFirstName = billerFirstName,
+                                            billerStreetName = billerStreetName,
+                                            billerStreetNumber = billerStreetNumber,
+                                            billerPlzNumber = billerPlzNumber,
+                                            billerCityName = billerCityName,
+                                            taxNumber = taxNumber,
+                                            billerIban = billerIban,
+                                            billerBIC = billerBIC,
+                                            customerPlz = customerPlz,
+                                            customerCityName = customerCityName,
+                                            customerMailBox = customerMailBox,
+                                            signaturePath = signaturePath,
+                                            pdfPath = pdfPath
+                                        )
+                                    )
+                                }
+                                isEditingIban = false
+                                isEditingBic = false
+                                isEditingTax = false
+                                kotlinx.coroutines.delay(750)
+                            } catch (e: Exception) {
+                                println("Fehler: ${e.message}")
+                            } finally {
+                                showLoader = false
+                            }
+                        }
+                    }
+                },
+                shape = CircleShape,
+                containerColor = if (showLoader) Color.Gray else Color(0xFFEDCDFD),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "Speichern",
+                    tint = if (showLoader) Color.LightGray else MaterialTheme.colorScheme.primary
+                )
+            }
 
-
-
-
-
-        FloatingActionButton(
-            onClick = {
-                // Nur ausführen, wenn nicht bereits ein Speichervorgang läuft
-                onClose()
-            },
-            shape = CircleShape,
-            // Wenn showLoader true ist, wird die Farbe auf Grau gesetzt
-            containerColor = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(24.dp)
-                .size(56.dp)
-        ) {
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go Back",
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
+            SmallFloatingActionButton(
+                onClick = { showResetDialog = true }, // Nur den Dialog öffnen
+                shape = CircleShape,
+                containerColor = Color(0xFFEDCDFD),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Werkseinstellungen",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
 
 
@@ -400,17 +500,135 @@ fun DataWindowContent(onClose: () -> Unit) {
             }
         }
     }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            modifier = Modifier.border(
+                width = 2.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(28.dp)
+            ),
+            containerColor = Color(0xFFEDCDFD),
+            title = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("Werkseinstellungen", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = { Text("Möchtest du wirklich alle Daten löschen und die App auf die Werkseinstellungen zurücksetzen?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            // 1. Dateien löschen
+                            SuggestionsManager.resetToFactorySettings()
+
+                            // 2. UI Felder aktualisieren
+                            withContext(Dispatchers.Main) {
+                                eduCenter = "Biberach - Ehingen"
+                                locationNr = "40 - 381"
+                                schoolType = "AsA flex"
+                                customerSecondNameOrOrga = "Kolping Berufsbildung gGmbH"
+                                customerFirstName = ""
+                                customerStreet = ""
+                                customerStreetNumber = ""
+                                customerPlz = "70010"
+                                customerCityName = "Stuttgart"
+                                customerMailBox = "10 11 61"
+                                pdfPath = getDefaultPdfPath()
+                                hourRate = "23.0"
+                                billerSecondName = ""
+                                billerFirstName = ""
+                                billerStreetName = ""
+                                billerStreetNumber = ""
+                                billerPlzNumber = ""
+                                billerCityName = ""
+                                billerIban = ""
+                                billerBIC = ""
+                                taxNumber = ""
+                                signaturePath = ""
+                                isEditingIban = false
+                                isEditingBic = false
+                                isEditingTax = false
+
+                                showResetDialog = false // Dialog schließen
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Ja, alles löschen", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
+
+
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            modifier = Modifier.border(
+                width = 2.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(28.dp)
+            ),
+            containerColor = Color(0xFFEDCDFD),
+            title = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("Ungespeicherte Änderungen", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text(
+                    "Du hast Änderungen vorgenommen. Möchtest du wirklich zurückkehren, ohne zu speichern?",
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUnsavedChangesDialog = false
+                        onClose() // Jetzt wirklich schließen
+                    }
+                ) {
+                    Text("Ja, verwerfen", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedChangesDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
+
+
 }
+
 
 fun getDefaultPdfPath(): String {
     val userHome = File(System.getProperty("user.home"))
-    val potentialDirs = listOf("Dokumente", "Documents", "documents")
-    val documentsDir = potentialDirs
-        .map { File(userHome, it) }
-        .firstOrNull { it.exists() && it.isDirectory } ?: userHome
+    val os = System.getProperty("os.name").lowercase()
 
-    return File(documentsDir, "Honorarabrechnungen").absolutePath
+
+    val folderName = when {
+        os.contains("win") -> "Documents"
+        os.contains("mac") -> "Documents"
+        else -> "Dokumente" // Standard für dein T470 / Linux
+    }
+
+    val documentsDir = File(userHome, folderName)
+
+    return if (documentsDir.exists()) {
+        File(documentsDir, "Honorarabrechnungen").absolutePath
+    } else {
+        // Falls kein Dokumenten-Ordner gefunden wird, direkt ins Home
+        File(userHome, "Honorarabrechnungen").absolutePath
+    }
 }
-
-
 

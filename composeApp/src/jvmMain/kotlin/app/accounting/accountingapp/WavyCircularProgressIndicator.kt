@@ -19,9 +19,9 @@ import kotlin.math.sin
 fun WavyCircularProgressIndicator(
     modifier: Modifier = Modifier,
     color: Color = Color(0xFFEDCDFD),
-    waveCount: Int = 8,
-    amplitude: Float = 4f,
-    animationDuration: Int = 500
+    waveCount: Int = 6,
+    amplitude: Float = 3f,
+    animationDuration: Int = 700
 ) {
     val infiniteTransition = rememberInfiniteTransition()
 
@@ -34,7 +34,7 @@ fun WavyCircularProgressIndicator(
     )
 
     // waveOffset für leichtes Pulsieren
-    // Wenn alles absolut STILL stehen soll targetValue 0f.
+    // Wenn alles absolut still stehen soll targetValue 0f
     val waveOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * Math.PI).toFloat(),
@@ -61,7 +61,7 @@ fun WavyCircularProgressIndicator(
             val angleInRad = Math.toRadians(currentAngle.toDouble()).toFloat()
 
 
-            // Welle an die Gradzahl des Kreises gebunden.
+            // Welle an die Gradzahl des Kreises gebunden
             val wave = sin(currentAngle.toDouble() * waveCount * (Math.PI / 180) + waveOffset).toFloat()
             val dynamicRadius = baseRadius + (wave * amplitude)
 

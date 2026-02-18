@@ -39,7 +39,7 @@ fun createInvoicePdf(
     val font = loadFont(regularPath, PDType1Font.HELVETICA)
     val fontBold = loadFont(boldPath, PDType1Font.HELVETICA_BOLD)
 
-// AB HIER kannst du 'font' und 'fontBold' für dein Layout nutzen
+// Ab hier'font' und 'fontBold' für das Layout
 
     val left = 50f
     val rightMargin = 50f
@@ -119,10 +119,14 @@ fun createInvoicePdf(
     var y = topStart
     var senderY = topStart
 
-    // Absender Rechts
+
+// Absender Rechts
     drawRightText(content, "${companyData.billerFirstName} ${companyData.billerSecondName}", senderY, bold = true)
     senderY -= lineHeight
-    drawRightText(content, companyData.billerStreetName, senderY)
+
+// GEÄNDERT: Straße und Hausnummer zusammengefügt
+    drawRightText(content, "${companyData.billerStreetName} ${companyData.billerStreetNumber}", senderY)
+
     senderY -= lineHeight
     drawRightText(content, "${companyData.billerPlzNumber} ${companyData.billerCityName}", senderY)
     senderY -= lineHeight * 2
@@ -161,10 +165,12 @@ fun createInvoicePdf(
     // Empfänger
     text(companyData.customerSecondNameOrOrga, bold = true)
     if (companyData.customerFirstName.isNotBlank()) text(companyData.customerFirstName)
+    // Empfänger (Korrektur im unteren Teil deines Codes)
     if (companyData.customerMailBox.isNotBlank()) {
         text("Postfach ${companyData.customerMailBox}")
     } else {
-        text(companyData.customerStreet)
+        // GEÄNDERT: Hier auch Straße + Nummer
+        text("${companyData.customerStreet} ${companyData.customerStreetNumber}")
     }
     text("${companyData.customerPlz} ${companyData.customerCityName}")
     y -= 20f
@@ -439,41 +445,52 @@ fun createInvoicePdf(
         content.close()
     }
 
-    // Den Speicherort bestimmen
+    // 1. Plattformunabhängiges Speicher
     val outputDir = if (companyData.pdfPath.isNotBlank()) {
         File(companyData.pdfPath)
     } else {
-        // Fallback: Falls in den Einstellungen nichts gewählt wurde
         val userHome = File(System.getProperty("user.home"))
-        val potentialDirs = listOf("Documents", "Dokumente", "documents")
-        val documentsDir = potentialDirs
-            .map { File(userHome, it) }
-            .firstOrNull { it.exists() && it.isDirectory } ?: userHome
+        val os = System.getProperty("os.name").lowercase()
 
-        File(documentsDir, "Honorarabrechnungen")
+        val folderName = when {
+            os.contains("win") -> "Documents"
+            os.contains("mac") -> "Documents"
+            else -> "Dokumente"
+        }
+
+        val documentsDir = File(userHome, folderName)
+        if (documentsDir.exists()) File(documentsDir, "Honorarabrechnungen")
+        else File(userHome, "Honorarabrechnungen")
     }
 
-    // Ordner erstellen, falls er nicht existiert
+    // 2. Ordner erstellen, falls er fehlt (Wichtig!)
     if (!outputDir.exists()) {
         outputDir.mkdirs()
     }
 
+    // 3. Die Datei-Variable definieren
     val file = File(outputDir, "rechnung_${invoiceData.invoiceNumber}.pdf")
 
+    // 4. Speichern und Schließen
     doc.save(file)
     doc.close()
 
-    // Desktop-Prüfung und Öffnen
+    // 5. Ordner automatisch im Explorer/Finder öffnen
     if (Desktop.isDesktopSupported()) {
         val desktop = Desktop.getDesktop()
-        // Wir öffnen den Ordner, damit du die Datei direkt siehst
         try {
-            desktop.open(outputDir)
-            // Optional: Die Datei direkt öffnen
-            // desktop.open(file)
+            if (outputDir.exists()) {
+                desktop.open(outputDir)
+            }
         } catch (e: Exception) {
             println("Konnte Ordner nicht öffnen: ${e.message}")
         }
     }
 }
+
+
+
+
+
+
 
