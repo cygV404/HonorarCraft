@@ -1,0 +1,33 @@
+# --- IntelliJ & Kotlin Defaults ---
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+
+# --- Apple / Xcode (Wichtig für deinen Mac) ---
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+# --- Web / Node (Falls mal gebraucht) ---
+node_modules/
+
+# --- EIGENE PROJEKTSPEZIFISCHE REGELN (Wichtig!) ---
+# Ignoriert deine lokalen Datenbanken und Rechnungsnummern
+.accountingapp/
+last_invoice_number.txt
+*.log
+
+# Ignoriert fertig exportierte PDFs (damit sie nicht auf GitHub landen)
+*.pdf
