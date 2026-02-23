@@ -438,10 +438,10 @@ fun Dashboard(
                                     withStyle(boldStyle) { append("Anleitung:\n\n") }
 
                                     withStyle(boldStyle) { append("Schritt 1:\n") }
-                                    append("Bitte stelle sicher, dass alle Stammdaten (Steuernummer, Anschrift etc.) korrekt in den Einstellungen (Zahnradsymbol ⚙️) hinterlegt sind, bevor du ein PDF generierst. Empfängerdaten, Bildungsstandort, Schulart/Maßnahme sowie ein Honorarsatz von 23 Euro sind als Standard bereits hinterlegt. Solltest du abweichende Daten haben, passe diese bitte entsprechend an.Zum Speichern der Daten unten auf das Disketten-Symbol 💾 klicken.\n\n")
+                                    append("Bitte stellen Sie sicher, dass alle Stammdaten (Steuernummer, Anschrift etc.) korrekt in den Einstellungen (Zahnradsymbol ⚙️) hinterlegt sind, bevor Sie ein PDF generieren. Empfängerdaten, Bildungsstandort, Schulart/Maßnahme sowie ein Honorarsatz von 23 Euro sind als Standard bereits hinterlegt. Sollten Sie abweichende Daten haben, bitte entsprechend anpassen. Zum Speichern der Daten unten auf das Disketten-Symbol 💾 klicken.\n\n")
 
                                     withStyle(boldStyle) { append("Wichtig: ") }
-                                    append("Achte darauf, die korrekte Steuernummer einzutragen (bitte nicht mit der Steuer-ID verwechseln). Das Feld für die Unterschrift ist optional – am besten ein PNG mit transparentem Hintergrund hochladen.\n\n")
+                                    append("Achten Sie darauf, die korrekte Steuernummer einzutragen (bitte nicht mit der Steuer-ID verwechseln). Das Feld für die Unterschrift ist optional – am besten ein PNG mit transparentem Hintergrund hochladen.\n\n")
 
 
                                     withStyle(SpanStyle(color = Color.Red, fontWeight = FontWeight.Bold)) {
@@ -455,9 +455,9 @@ fun Dashboard(
 
 
                                     withStyle(boldStyle) { append("Schritt 2:\n") }
-                                    append("Im Feld für den Jahresumsatz ggf. einen Startwert für Altumsätze wählen (Klick auf das Summenzeichen ∑). Gewünschte Rechnungsnummer wählen und auf \"Rechnung erstellen\" klicken. Hier kannst du Einträge hinzufügen oder löschen. Über das Uhrensymbol 🕒 im Stundenfeld kannst du zwischen Stunden und Unterrichtseinheiten (UE) umschalten. Bitte bleibe pro Rechnung bei einem Konzept (entweder Stunden oder UE).\n\n")
+                                    append("Im Feld für den Jahresumsatz ggf. einen Startwert für Altumsätze wählen (Klick auf das Summenzeichen ∑). Gewünschte Rechnungsnummer wählen und auf \"Rechnung erstellen\" klicken. Hier können Sie Einträge hinzufügen oder löschen. Über das Uhrensymbol 🕒 im Stundenfeld kann zwischen Stunden und Unterrichtseinheiten (UE) umgeschaltet werden. Bitte bleiben Sie pro Rechnung bei einem Konzept (entweder Stunden oder UE).\n\n")
 
-                                    append("Deine Einträge werden gespeichert und beim nächsten Start automatisch geladen. Du kannst auch vorherige Rechnungsnummern im Startfenster wählen, um diese zu bearbeiten.\n\n")
+                                    append("Ihre Einträge werden gespeichert und beim nächsten Start automatisch geladen. Sie können auch vorherige Rechnungsnummern im Startfenster wählen, um diese zu bearbeiten.\n\n")
 
                                     withStyle(boldStyle) { append("Schritt 3:\n") }
                                     append("Nachdem alle Einträge für den Monat erfasst wurden, auf \"PDF erstellen\" klicken. Die Rechnungsnummer wird danach automatisch um eine Stelle erhöht und für die nächste Abrechnung gespeichert.\n\n\n")
@@ -466,11 +466,11 @@ fun Dashboard(
                                     append("Der PDF-Export erfolgt standardmäßig in einen unverschlüsselten Pfad. Für maximale Datensicherheit empfehle ich, die Rechnungen in einem verschlüsselten Verzeichnis (z. B. BitLocker oder VeraCrypt) zu speichern.\n\n")
 
                                     withStyle(boldStyle) { append("Speicherort & Datensicherheit:\n") }
-                                    append("Deine Daten werden plattformunabhängig im jeweiligen App-Datenverzeichnis deines Betriebssystems (z. B. unter Windows in 'AppData') im Ordner 'HonorarCraft' gespeichert.\n\n")
+                                    append("Ihre Daten werden plattformunabhängig im jeweiligen App-Datenverzeichnis des Betriebssystems (z. B. unter Windows in 'AppData') im Ordner 'HonorarCraft' gespeichert.\n\n")
 
-                                    append("Um deine Privatsphäre zu schützen, werden alle personenbezogenen Daten (Name, Anschrift, Steuernummer, IBAN/BIC) ")
+                                    append("Um Ihre Privatsphäre zu schützen, werden alle personenbezogenen Daten (Name, Anschrift, Steuernummer, IBAN/BIC) ")
                                     withStyle(boldStyle) { append("lokal mit AES-Verschlüsselung ") }
-                                    append("gesichert. Der dafür notwendige Sicherheitsschlüssel wird sicher im System-Tresor deines Betriebssystems verwaltet. So sind deine Daten selbst dann geschützt, wenn die Dateien unbefugt kopiert werden.\n\n")
+                                    append("gesichert. Der dafür notwendige Sicherheitsschlüssel wird sicher im System-Tresor des Betriebssystems verwaltet. So sind Ihre Daten selbst dann geschützt, wenn die Dateien unbefugt kopiert werden.\n\n")
 
                                     withStyle(headerStyle) { append("Rechtlicher Hinweis:\n") }
                                     append("Die berechneten Beträge sollten vor dem Versenden der Rechnung stets auf ihre Richtigkeit geprüft werden. Der Entwickler übernimmt keine Haftung für fehlerhafte Berechnungen oder steuerliche Fehlbehandlungen.\n\n")

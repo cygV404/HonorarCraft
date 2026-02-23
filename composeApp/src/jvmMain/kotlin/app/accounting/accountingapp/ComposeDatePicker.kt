@@ -96,7 +96,7 @@ fun ComposeDatePicker(
                     modifier = Modifier
                         .shadow(8.dp, RoundedCornerShape(8.dp))
                         .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-                        .background(Color.White)
+                        .background(Color(0xFFEDCDFD))
                         .width(300.dp)
                 )
             }

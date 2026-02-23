@@ -30,36 +30,37 @@ import java.io.File
 @Composable
 fun DataWindowContent(onClose: () -> Unit) {
 
-    val loaded = remember { loadCompanyData() }
+    val initialData = remember { loadCompanyData() }
+    var lastSavedData by remember { mutableStateOf(initialData) }
     val scope = rememberCoroutineScope()
     var showLoader by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     // States für die linke Spalte
-    var eduCenter by remember { mutableStateOf(loaded?.eduCenter ?: "") }
-    var locationNr by remember { mutableStateOf(loaded?.locationNr ?: "") }
-    var schoolType by remember { mutableStateOf(loaded?.schoolType ?: "") }
-    var customerSecondNameOrOrga by remember { mutableStateOf(loaded?.customerSecondNameOrOrga ?: "") }
-    var customerFirstName by remember { mutableStateOf(loaded?.customerFirstName ?: "") }
-    var customerStreet by remember { mutableStateOf(loaded?.customerStreet ?: "") }
-    var customerStreetNumber by remember { mutableStateOf(loaded?.customerStreetNumber ?: "") }
-    var hourRate by remember { mutableStateOf(loaded?.hourRate ?: "") }
-    var customerPlz by remember { mutableStateOf(loaded?.customerPlz ?: "") }
-    var customerCityName by remember { mutableStateOf(loaded?.customerCityName ?: "") }
-    var customerMailBox by remember { mutableStateOf(loaded?.customerMailBox ?: "") }
-    var pdfPath by remember { mutableStateOf(loaded?.pdfPath ?: "") }
+    var eduCenter by remember { mutableStateOf(lastSavedData?.eduCenter ?: "") }
+    var locationNr by remember { mutableStateOf(lastSavedData?.locationNr ?: "") }
+    var schoolType by remember { mutableStateOf(lastSavedData?.schoolType ?: "") }
+    var customerSecondNameOrOrga by remember { mutableStateOf(lastSavedData?.customerSecondNameOrOrga ?: "") }
+    var customerFirstName by remember { mutableStateOf(lastSavedData?.customerFirstName ?: "") }
+    var customerStreet by remember { mutableStateOf(lastSavedData?.customerStreet ?: "") }
+    var customerStreetNumber by remember { mutableStateOf(lastSavedData?.customerStreetNumber ?: "") }
+    var hourRate by remember { mutableStateOf(lastSavedData?.hourRate ?: "") }
+    var customerPlz by remember { mutableStateOf(lastSavedData?.customerPlz ?: "") }
+    var customerCityName by remember { mutableStateOf(lastSavedData?.customerCityName ?: "") }
+    var customerMailBox by remember { mutableStateOf(lastSavedData?.customerMailBox ?: "") }
+    var pdfPath by remember { mutableStateOf(lastSavedData?.pdfPath ?: "") }
 
     // States für die rechte Spalte
-    var billerSecondName by remember { mutableStateOf(loaded?.billerSecondName ?: "") }
-    var billerFirstName by remember { mutableStateOf(loaded?.billerFirstName ?: "") }
-    var billerStreetName by remember { mutableStateOf(loaded?.billerStreetName ?: "") }
-    var billerStreetNumber by remember { mutableStateOf(loaded?.billerStreetNumber ?: "") }
-    var billerPlzNumber by remember { mutableStateOf(loaded?.billerPlzNumber ?: "") }
-    var billerCityName by remember { mutableStateOf(loaded?.billerCityName ?: "") }
-    var billerIban by remember { mutableStateOf(loaded?.billerIban ?: "") }
-    var billerBIC by remember { mutableStateOf(loaded?.billerBIC ?: "") }
-    var signaturePath by remember { mutableStateOf(loaded?.signaturePath ?: "") }
-    var taxNumber by remember { mutableStateOf(loaded?.taxNumber ?: "") }
+    var billerSecondName by remember { mutableStateOf(lastSavedData?.billerSecondName ?: "") }
+    var billerFirstName by remember { mutableStateOf(lastSavedData?.billerFirstName ?: "") }
+    var billerStreetName by remember { mutableStateOf(lastSavedData?.billerStreetName ?: "") }
+    var billerStreetNumber by remember { mutableStateOf(lastSavedData?.billerStreetNumber ?: "") }
+    var billerPlzNumber by remember { mutableStateOf(lastSavedData?.billerPlzNumber ?: "") }
+    var billerCityName by remember { mutableStateOf(lastSavedData?.billerCityName ?: "") }
+    var billerIban by remember { mutableStateOf(lastSavedData?.billerIban ?: "") }
+    var billerBIC by remember { mutableStateOf(lastSavedData?.billerBIC ?: "") }
+    var signaturePath by remember { mutableStateOf(lastSavedData?.signaturePath ?: "") }
+    var taxNumber by remember { mutableStateOf(lastSavedData?.taxNumber ?: "") }
 
     var isEditingIban by remember { mutableStateOf(false) }
     var isEditingBic by remember { mutableStateOf(false) }
@@ -67,28 +68,28 @@ fun DataWindowContent(onClose: () -> Unit) {
 
     val hasChanges by remember {
         derivedStateOf {
-            eduCenter != (loaded?.eduCenter ?: "") ||
-                    locationNr != (loaded?.locationNr ?: "") ||
-                    schoolType != (loaded?.schoolType ?: "") ||
-                    customerSecondNameOrOrga != (loaded?.customerSecondNameOrOrga ?: "") ||
-                    customerFirstName != (loaded?.customerFirstName ?: "") ||
-                    customerStreet != (loaded?.customerStreet ?: "") ||
-                    customerStreetNumber != (loaded?.customerStreetNumber ?: "") ||
-                    customerPlz != (loaded?.customerPlz ?: "") ||
-                    customerCityName != (loaded?.customerCityName ?: "") ||
-                    customerMailBox != (loaded?.customerMailBox ?: "") ||
-                    hourRate != (loaded?.hourRate ?: "") ||
-                    pdfPath != (loaded?.pdfPath ?: "") ||
-                    billerSecondName != (loaded?.billerSecondName ?: "") ||
-                    billerFirstName != (loaded?.billerFirstName ?: "") ||
-                    billerStreetName != (loaded?.billerStreetName ?: "") ||
-                    billerStreetNumber != (loaded?.billerStreetNumber ?: "") ||
-                    billerPlzNumber != (loaded?.billerPlzNumber ?: "") ||
-                    billerCityName != (loaded?.billerCityName ?: "") ||
-                    billerIban != (loaded?.billerIban ?: "") ||
-                    billerBIC != (loaded?.billerBIC ?: "") ||
-                    taxNumber != (loaded?.taxNumber ?: "") ||
-                    signaturePath != (loaded?.signaturePath ?: "")
+            eduCenter != (lastSavedData?.eduCenter ?: "") ||
+                    locationNr != (lastSavedData?.locationNr ?: "") ||
+                    schoolType != (lastSavedData?.schoolType ?: "") ||
+                    customerSecondNameOrOrga != (lastSavedData?.customerSecondNameOrOrga ?: "") ||
+                    customerFirstName != (lastSavedData?.customerFirstName ?: "") ||
+                    customerStreet != (lastSavedData?.customerStreet ?: "") ||
+                    customerStreetNumber != (lastSavedData?.customerStreetNumber ?: "") ||
+                    customerPlz != (lastSavedData?.customerPlz ?: "") ||
+                    customerCityName != (lastSavedData?.customerCityName ?: "") ||
+                    customerMailBox != (lastSavedData?.customerMailBox ?: "") ||
+                    hourRate != (lastSavedData?.hourRate ?: "") ||
+                    pdfPath != (lastSavedData?.pdfPath ?: "") ||
+                    billerSecondName != (lastSavedData?.billerSecondName ?: "") ||
+                    billerFirstName != (lastSavedData?.billerFirstName ?: "") ||
+                    billerStreetName != (lastSavedData?.billerStreetName ?: "") ||
+                    billerStreetNumber != (lastSavedData?.billerStreetNumber ?: "") ||
+                    billerPlzNumber != (lastSavedData?.billerPlzNumber ?: "") ||
+                    billerCityName != (lastSavedData?.billerCityName ?: "") ||
+                    billerIban != (lastSavedData?.billerIban ?: "") ||
+                    billerBIC != (lastSavedData?.billerBIC ?: "") ||
+                    taxNumber != (lastSavedData?.taxNumber ?: "") ||
+                    signaturePath != (lastSavedData?.signaturePath ?: "")
         }
     }
 
@@ -421,34 +422,41 @@ fun DataWindowContent(onClose: () -> Unit) {
                         scope.launch {
                             try {
                                 showLoader = true
+
+                                // 1. Das Objekt erstellen, das gespeichert werden soll
+                                val dataToSave = CompanyData(
+                                    eduCenter = eduCenter,
+                                    locationNr = locationNr,
+                                    schoolType = schoolType,
+                                    customerSecondNameOrOrga = customerSecondNameOrOrga,
+                                    customerFirstName = customerFirstName,
+                                    customerStreet = customerStreet,
+                                    customerStreetNumber = customerStreetNumber,
+                                    hourRate = hourRate,
+                                    billerSecondName = billerSecondName,
+                                    billerFirstName = billerFirstName,
+                                    billerStreetName = billerStreetName,
+                                    billerStreetNumber = billerStreetNumber,
+                                    billerPlzNumber = billerPlzNumber,
+                                    billerCityName = billerCityName,
+                                    taxNumber = taxNumber,
+                                    billerIban = billerIban,
+                                    billerBIC = billerBIC,
+                                    customerPlz = customerPlz,
+                                    customerCityName = customerCityName,
+                                    customerMailBox = customerMailBox,
+                                    signaturePath = signaturePath,
+                                    pdfPath = pdfPath
+                                )
+
                                 withContext(Dispatchers.IO) {
-                                    saveCompanyData(
-                                        CompanyData(
-                                            eduCenter = eduCenter,
-                                            locationNr = locationNr,
-                                            schoolType = schoolType,
-                                            customerSecondNameOrOrga = customerSecondNameOrOrga,
-                                            customerFirstName = customerFirstName,
-                                            customerStreet = customerStreet,
-                                            customerStreetNumber = customerStreetNumber,
-                                            hourRate = hourRate,
-                                            billerSecondName = billerSecondName,
-                                            billerFirstName = billerFirstName,
-                                            billerStreetName = billerStreetName,
-                                            billerStreetNumber = billerStreetNumber,
-                                            billerPlzNumber = billerPlzNumber,
-                                            billerCityName = billerCityName,
-                                            taxNumber = taxNumber,
-                                            billerIban = billerIban,
-                                            billerBIC = billerBIC,
-                                            customerPlz = customerPlz,
-                                            customerCityName = customerCityName,
-                                            customerMailBox = customerMailBox,
-                                            signaturePath = signaturePath,
-                                            pdfPath = pdfPath
-                                        )
-                                    )
+                                    saveCompanyData(dataToSave)
                                 }
+
+                                // 2. Den Vergleichs-State aktualisieren!
+                                // Dadurch wird hasChanges wieder false.
+                                lastSavedData = dataToSave
+
                                 isEditingIban = false
                                 isEditingBic = false
                                 isEditingTax = false
@@ -550,7 +558,23 @@ fun DataWindowContent(onClose: () -> Unit) {
                                 isEditingIban = false
                                 isEditingBic = false
                                 isEditingTax = false
-
+// Vergleichs-State auf die Standardwerte setzen
+                                lastSavedData = CompanyData(
+                                    eduCenter = "Biberach - Ehingen",
+                                    locationNr = "40 - 381",
+                                    schoolType = "AsA flex",
+                                    customerSecondNameOrOrga = "Kolping Berufsbildung gGmbH",
+                                    customerPlz = "70010",
+                                    customerCityName = "Stuttgart",
+                                    customerMailBox = "10 11 61",
+                                    hourRate = "23.0",
+                                    pdfPath = getDefaultPdfPath(),
+                                    // Alle anderen Felder leer
+                                    customerFirstName = "", customerStreet = "", customerStreetNumber = "",
+                                    billerSecondName = "", billerFirstName = "", billerStreetName = "",
+                                    billerStreetNumber = "", billerPlzNumber = "", billerCityName = "",
+                                    billerIban = "", billerBIC = "", taxNumber = "", signaturePath = ""
+                                )
                                 showResetDialog = false // Dialog schließen
                             }
                         }
