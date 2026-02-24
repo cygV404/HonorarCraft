@@ -107,7 +107,7 @@ fun DataWindowContent(onClose: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
 
-                .background(color = Color(0xFFEDCDFD).copy(alpha = 0.85f))
+                .background(color = Color.White)
                 .padding(24.dp),
             horizontalArrangement = Arrangement.spacedBy(32.dp)
         ) {
@@ -405,7 +405,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     }
                 },
                 shape = CircleShape,
-                containerColor = Color(0xFFEDCDFD),
+                containerColor = Color(0xFFE0D6FE),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -470,7 +470,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                     }
                 },
                 shape = CircleShape,
-                containerColor = if (showLoader) Color.Gray else Color(0xFFEDCDFD),
+                containerColor = if (showLoader) Color.Gray else Color(0xFFE0D6FE),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -483,7 +483,7 @@ fun DataWindowContent(onClose: () -> Unit) {
             SmallFloatingActionButton(
                 onClick = { showResetDialog = true }, // Nur den Dialog öffnen
                 shape = CircleShape,
-                containerColor = Color(0xFFEDCDFD),
+                containerColor = Color(0xFFE0D6FE),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
@@ -517,7 +517,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                 color = Color.Black,
                 shape = RoundedCornerShape(28.dp)
             ),
-            containerColor = Color(0xFFEDCDFD),
+            // containerColor = Color(0xFFEDCDFD),
             title = {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text("Werkseinstellungen", fontWeight = FontWeight.Bold)
@@ -601,7 +601,7 @@ fun DataWindowContent(onClose: () -> Unit) {
                 color = Color.Black,
                 shape = RoundedCornerShape(28.dp)
             ),
-            containerColor = Color(0xFFEDCDFD),
+
             title = {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Text("Ungespeicherte Änderungen", fontWeight = FontWeight.Bold)

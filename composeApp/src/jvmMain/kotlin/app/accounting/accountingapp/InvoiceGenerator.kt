@@ -109,7 +109,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFE0A4FE).copy(0.8f))
+                .background(color = Color.White)
                 .padding(16.dp)
         ) {
 
@@ -365,7 +365,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     SmallFloatingActionButton(
                         onClick = onBack,
                         shape = CircleShape,
-                        containerColor = Color(0xFFEDCDFD),
+                        containerColor = Color(0xFFE0D6FE),
                         modifier = Modifier.size(56.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Zurück", tint = MaterialTheme.colorScheme.primary)
@@ -375,7 +375,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     SmallFloatingActionButton(
                         onClick = onCloseApp,
                         shape = CircleShape,
-                        containerColor = Color(0xFFEDCDFD),
+                        containerColor = Color(0xFFE0D6FE),
                         modifier = Modifier.size(56.dp)
                     ) {
                         Icon(Icons.Default.Close, "Beenden", tint = MaterialTheme.colorScheme.primary)
@@ -387,7 +387,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                             showDeleteSuggestionsDialog = true
                         },
                         shape = CircleShape,
-                        containerColor = Color(0xFFEDCDFD),
+                        containerColor = Color(0xFFE0D6FE),
                         modifier = Modifier.size(56.dp)
                     ) {
                         Icon(
@@ -412,7 +412,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     .padding(8.dp)
                     // .border(width = 1.dp, color = Color.Black.copy(alpha = 0.5f), shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
                     .background(
-                        color = Color(0xFFEDCDFD).copy(alpha = 0.0f),
+                        color = Color.White,
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                     )
                     .padding(top = 24.dp, end = 16.dp, start = 16.dp)
@@ -421,7 +421,10 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     text = "Rechnung: $invoiceNumber",
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyLarge
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -435,7 +438,9 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                             color = Color.Black.copy(alpha = 0.1f),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                         ),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.4f))
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                    )
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -446,25 +451,33 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                             "Datum",
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "UE a 45 Min",
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "Kosten",
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "Klasse/Fach",
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -498,8 +511,13 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                 ),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                else Color.White.copy(alpha = 0.5f)
+                                containerColor = if (isChecked) {
+                                    // Wenn markiert: Dein Lila-Ton passend zum Header
+                                    Color.White
+                                } else {
+                                    // Wenn nicht markiert: Exakt wie im Dashboard
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                                }
                             )
                         ) {
                             Row(
@@ -583,7 +601,9 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                             color = Color.Black.copy(alpha = 0.1f),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                         ),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.4f))
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                    )
                 ) {
                     AnimatedContent(
                         targetState = entries to showUELabel,
@@ -610,6 +630,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                     text = "Gesamtkosten: ${tempInvoice.totalCostsLessonUnits} €",
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.primary,
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -617,13 +638,16 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                     text = "UE Gesamt: ${tempInvoice.totalHours}",
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyLarge
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
                                 )
                             } else {
                                 Text(
                                     text = "Gesamtkosten: ${tempInvoice.totalCostsHours} €",
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.primary,
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -631,7 +655,9 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                                     text = "UE Gesamt: ${tempInvoice.totalLessonUnit}",
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyLarge
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
@@ -669,7 +695,7 @@ fun InvoiceGenerator(invoiceNumber: String, onCloseApp: () -> Unit, onBack: () -
                     color = Color.Black,
                     shape = RoundedCornerShape(28.dp)
                 ),
-                containerColor = Color(0xFFEDCDFD),
+
                 title = {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text("Vorschläge löschen", fontWeight = FontWeight.Bold)

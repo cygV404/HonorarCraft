@@ -38,21 +38,21 @@ aus den **Releases/Assets** auf der rechten Seite herunter:
 ### 🖥️ Programm-Oberfläche
 
 #### Hauptansicht
-  <img width="1920" alt="Hauptansicht" src="https://github.com/user-attachments/assets/6aa03e7d-f617-4406-9cb5-cef573d60f3d" />
+  <img width="1920" alt="Hauptansicht" src="https://github.com/user-attachments/assets/b50da043-01ef-4834-8d3e-7b4dc6552a60" />
 
 #### Datenverwaltung
-  <img width="1920" alt="Datenverwaltung" src="https://github.com/user-attachments/assets/fb49fd92-d415-4f6b-99e2-6c275efa09a2" />
+  <img width="1920" alt="Datenverwaltung" src="https://github.com/user-attachments/assets/b015cd34-d397-4a47-b4e9-44976ea11fd2" />
 
 #### Rechnung erstellen
-  <img width="1920" alt="Übersicht" src="https://github.com/user-attachments/assets/4d3acdec-78e5-4822-a790-a8d581715f98" />
+  <img width="1920" alt="Übersicht" src="https://github.com/user-attachments/assets/9d0e9968-8c4f-4d52-bc2d-6d76b3b0a707" />
 
   <br>
 
 ### 📄 PDF-Export Beispiele
   <p align="left">
-    <img width="300" alt="PDF Export Beispiel 1" src="https://github.com/user-attachments/assets/a6d57c7b-c5d2-474a-a61e-d5bbaeca940b" />
-    <img width="300" alt="PDF Export Beispiel 2" src="https://github.com/user-attachments/assets/ca97cf31-e168-426c-a713-6d3593d2e064" />
+    <img width="300" alt="PDF Export Beispiel 2" src="https://github.com/user-attachments/assets/797e0b58-4e6f-4899-8024-ddcd579ad8af" />
+    <img width="300" alt="PDF Export Beispiel 1" src="https://github.com/user-attachments/assets/1d817a50-1764-4b74-ab2b-bb5ba5d3514a" />
+
   </p>
 
 </details>
-

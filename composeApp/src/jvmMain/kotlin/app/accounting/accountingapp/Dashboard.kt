@@ -207,7 +207,7 @@ fun Dashboard(
                         color = Color.Black,
                         shape = RoundedCornerShape(28.dp) // Standard-Radius für M3 Dialoge
                     ),
-                    containerColor = Color(0xFFEDCDFD),
+                    containerColor = Color(0xFFE0D6FE),
                     title = {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Text("Startwert $selectedYear")
@@ -406,6 +406,7 @@ fun Dashboard(
         if (showInfoDialog) {
             AlertDialog(
                 onDismissRequest = { showInfoDialog = false },
+                //  containerColor = Color(0xFFE0D6FE),
                 title = { Text("Über HonorarCraft") },
                 text = {
 
@@ -520,7 +521,7 @@ fun Dashboard(
             SmallFloatingActionButton(
                 onClick = { showInfoDialog = true },
                 shape = CircleShape,
-                containerColor = Color(0xFFEDCDFD),
+                containerColor = Color(0xFFE0D6FE),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary)
@@ -530,7 +531,7 @@ fun Dashboard(
             FloatingActionButton(
                 onClick = onClose,
                 shape = CircleShape,
-                containerColor = Color(0xFFEDCDFD),
+                containerColor = Color(0xFFE0D6FE),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(Icons.Default.Close, contentDescription = "Beenden", tint = MaterialTheme.colorScheme.primary)
@@ -540,7 +541,7 @@ fun Dashboard(
             SmallFloatingActionButton(
                 onClick = onOpenData,
                 shape = CircleShape,
-                containerColor = Color(0xFFEDCDFD),
+                containerColor = Color(0xFFE0D6FE),
                 modifier = Modifier.size(56.dp)
             ) {
                 Icon(
