@@ -17,6 +17,7 @@ class PreferencesSettings(
 
     override fun putInt(key: String, value: Int) {
         prefs.putInt(key, value)
+        sofortSchreiben()
     }
 
     override fun getString(key: String, defaultValue: String): String =
@@ -24,9 +25,24 @@ class PreferencesSettings(
 
     override fun putString(key: String, value: String) {
         prefs.put(key, value)
+        sofortSchreiben()
     }
 
     override fun clear() {
         prefs.clear()
+        sofortSchreiben()
+    }
+
+    /**
+     * `java.util.prefs` schreibt sonst nur verzögert — der Wert steht im Speicher und landet
+     * erst beim periodischen Abgleich oder beim sauberen Beenden auf der Platte. Wird die App
+     * vorher abgewürgt, ist er weg.
+     *
+     * Für die Rechnungsnummer wäre das ernst: nach einem erzeugten PDF stünde beim nächsten
+     * Start wieder die alte Nummer, und zwei Rechnungen bekämen dieselbe.
+     */
+    private fun sofortSchreiben() {
+        runCatching { prefs.flush() }
+            .onFailure { logError("Settings", "Einstellungen konnten nicht geschrieben werden", it) }
     }
 }
