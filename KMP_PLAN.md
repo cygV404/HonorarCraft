@@ -11,9 +11,11 @@ Stand: 13.09.2026. Phase 0 und Phase 1 sind erledigt, gearbeitet wird auf dem Br
 3. **Room auch auf dem Desktop.** Fällt der Spike durch, SQLite über JDBC hinter demselben
    Repository-Interface — nicht bei JSON bleiben.
 5. **Eine gemeinsame, adaptive Oberfläche** (Breiten-Abfrage statt zweier Implementierungen).
+8. **iOS bleibt außen vor.** Kein iOS-Target, auch nicht vorbereitend in der Struktur.
+   Damit ist die Nutzung von JVM-APIs im gemeinsamen Code (`jvmCommonMain`, `java.math.BigDecimal`)
+   eine dauerhafte Entscheidung und keine Notlösung mehr.
 
-Offen bleiben die Fragen 4, 6, 7 und 8 am Ende dieser Datei; sie werden erst in Phase 2 bzw. 4
-gebraucht.
+Offen bleiben die Fragen 4, 6 und 7 am Ende dieser Datei.
 
 ## Ausgangslage
 
@@ -40,7 +42,7 @@ wenige Cent verschieben.
 
 ```
 HonorarCraft/                     (dieses Repo, umbenanntes Root-Projekt)
-├── shared/          commonMain   Modelle, Room-Entities+DAOs, Rechenlogik,
+├── shared/          jvmCommonMain Modelle, Room-Entities+DAOs, Rechenlogik,
 │                                 Rechnungsnummern-Format, ViewModel, Repository
 │                    androidMain  Room-Driver Android, Datei-/Share-Zugriff
 │                    jvmMain      Room-Driver JVM, Datei-Zugriff
@@ -152,9 +154,9 @@ Abgeschlossen. Gewählte Versionen:
       **Nicht `commonMain`, sondern ein Zwischen-Quellsatz `jvmCommonMain`.** Die Entities und
       die Rechenlogik hängen an `java.math.BigDecimal`, und `java.*` ist in `commonMain` nicht
       verfügbar. Da Android und Desktop beide JVM-Ziele sind, hängt zwischen `commonMain` und
-      den Targets jetzt `jvmCommonMain` (analog `jvmCommonTest`). Preis: Kommt iOS dazu
-      (offene Frage 8), muss `BigDecimal` dort ersetzt werden — die Cent-Genauigkeit hängt
-      daran, das ist keine Fingerübung.
+      den Targets jetzt `jvmCommonMain` (analog `jvmCommonTest`). Da iOS außen vor bleibt
+      (Entscheidung 8), ist das keine Notlösung, sondern der Zielzustand — `BigDecimal` und der
+      Rest der JVM-Bibliothek stehen im gemeinsamen Code dauerhaft zur Verfügung.
 - [x] Migrationen auf die KMP-API portiert: `Migration.migrate(SupportSQLiteDatabase)` gibt es
       in `commonMain` nicht, die Signatur ist jetzt `migrate(connection: SQLiteConnection)`.
       Das SQL selbst ist unverändert geblieben.
@@ -186,8 +188,13 @@ Abgeschlossen. Gewählte Versionen:
 
 ## Phase 3 — Fachlogik und Tests teilen
 
-- [ ] `CalculationTest.kt` als Erstes nach `shared/commonTest` — er ist die Abnahme für alles
-      Weitere.
+- [x] `CalculationTest.kt` liegt in `shared/src/jvmCommonTest` und läuft damit gegen **beide**
+      Plattformen: 14 Tests, grün unter `:shared:jvmTest` und `:shared:testAndroidHostTest`.
+      JUnit-Importe durch `kotlin.test` ersetzt (gleiche `assertEquals`-Semantik, `BigDecimal`
+      wird weiterhin skalengenau verglichen).
+- [x] `InvoiceFormat` und `formatInvoice` aus `MainViewModel.kt` herausgelöst nach
+      `shared/.../data/InvoiceNumber.kt` — der `CalculationTest` braucht sie, und sie hingen
+      nur zufällig im ViewModel.
 - [ ] Rechenlogik (`totalSum`, `totalLessonUnit`), `InvoiceFormat`/`formatInvoice`,
       `Constants` nach `commonMain`. Die Desktop-Varianten (`totalCostsHours` &
       `totalCostsLessonUnits` mit der vertauschten Benennung) ersatzlos streichen.
@@ -255,5 +262,4 @@ die darf sich nie ändern, sonst ist es für den Store eine neue App. Der `names
    `CryptoHelper`, Android verlässt sich auf `allowBackup="false"`. Gemeinsam gelöst wird das
    entweder gar nicht mehr (Feldverschlüsselung fällt weg) oder für beide (z. B. SQLCipher).
    Was ist dir lieber?
-8. **iOS-Target** schon jetzt in der Struktur vorsehen (kostet in Phase 1 wenig, in Phase 6
-   viel) oder erst einmal ausklammern?
+~~8.~~ — beantwortet: iOS bleibt außen vor, siehe "Getroffene Entscheidungen" oben.

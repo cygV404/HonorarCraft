@@ -72,7 +72,8 @@ Der Code liegt **nicht** in `commonMain`, sondern in `jvmCommonMain` (bzw. `jvmC
 einem Zwischen-Quellsatz zwischen `commonMain` und den beiden Targets. Grund: Entities und
 Rechenlogik nutzen `java.math.BigDecimal`, und `java.*` ist in `commonMain` nicht verfügbar.
 Android und Desktop sind beide JVM-Ziele, deshalb geht das. Neuer gemeinsamer Code gehört
-dorthin, sofern er JVM-APIs braucht.
+dorthin — **ein iOS-Target ist bewusst ausgeschlossen**, JVM-APIs im gemeinsamen Code sind
+also dauerhaft in Ordnung.
 
 ### Datenschicht (Room, `shared/src/jvmCommonMain/.../shared/data/`)
 

@@ -1,16 +1,17 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
 import java.math.BigDecimal
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * Tests für die Rechenlogik der Abrechnung.
  *
  * Hier entscheidet sich, ob auf der Rechnung der richtige Betrag steht – ein
  * Fehler wirkt sich unmittelbar auf einen Beleg aus, den der Nutzer weitergibt.
- * Alles hier ist reines Kotlin ohne Android-Abhängigkeit und läuft deshalb ohne
- * Emulator: `./gradlew test`
+ * Alles hier ist reines Kotlin ohne Android-Abhängigkeit. Der Test liegt in
+ * `jvmCommonTest` und läuft deshalb gegen beide Plattformen:
+ * `./gradlew :shared:jvmTest` (Desktop) und `./gradlew :shared:testAndroidHostTest`.
  *
  * Fachlicher Hintergrund: gebucht werden Zeitstunden, abgerechnet wird in
  * Unterrichtseinheiten à 45 Minuten. Eine Zeitstunde sind also 60/45 = 4/3 UE.
