@@ -48,6 +48,10 @@ Lint-Task gibt es nicht.
 Bei einer neuen Version müssen `packageVersion` in `composeApp/build.gradle.kts` **und** die README-Überschrift
 angepasst werden.
 
+Die Desktop-Icons werden aus einer PNG-Quelle erzeugt, nicht von Hand gepflegt:
+`java tools/MakeIcons.java <quelle.png> composeApp/src/jvmMain/composeResources/drawable`
+(siehe `tools/README.md`).
+
 ## Architektur
 
 ### Module
@@ -175,10 +179,27 @@ mit dem aktuellen Jahr als Fallback.
 brechen die Umlaute. Das Unterschriftsbild kommt aus dem konfigurierten `signaturePath`, die Ausgabe landet in
 `companyData.pdfPath` (Standard `~/Dokumente/Honorarabrechnungen`, unter Windows `Documents/...`).
 
+### Theme (`composeApp/src/commonMain/.../ui/theme/`)
+
+`HonorarCraftTheme` gilt für beide Plattformen. Die einzige plattformabhängige Stelle sind
+Androids dynamische Systemfarben: `expect fun dynamicColorSchemeOrNull(darkTheme)` liefert auf
+Android ab API 31 ein Schema, auf dem Desktop `null` — dann greift das statische Schema.
+
+- Die Schrift **Montserrat wird als TTF mitgeliefert** (`commonMain/composeResources/font/`),
+  nicht über den Google-Fonts-Provider geladen: den gibt es nur auf Android.
+- Das Farbschema ist noch das unveränderte Compose-Vorlagen-Lila. Die Markenfarben
+  `BrandCyan`/`BrandGreen` (aus dem Launcher-Icon) sind in `Color.kt` vorhanden, werden aber
+  von keinem Schema benutzt.
+- **Der Desktop läuft fest im Hellmodus** (`HonorarCraftTheme(darkTheme = false)` in `main.kt`).
+  Die Screens in `jvmMain` tragen noch rund drei Dutzend fest verdrahtete Farben; Dunkelmodus
+  darüber wäre halb unlesbar. Der Parameter kann weg, sobald diese Screens ersetzt sind.
+
 ### Ressourcen — zwei unterschiedliche Mechanismen
 
-`src/jvmMain/composeResources/drawable/` sind Compose Resources (App-Icon, Hintergrund, die in der
-`build.gradle.kts` referenzierten Installer-Icons), erreichbar über das generierte `Res.drawable.*`
+Compose Resources liegen in **zwei** Quellsätzen: `src/commonMain/composeResources/` (die
+Schriftdatei, für beide Plattformen) und `src/jvmMain/composeResources/` (App-Icon, Hintergrund,
+die in der `build.gradle.kts` referenzierten Installer-Icons — `.ico`/`.icns` taugen nicht als
+Android-Drawables und müssen deshalb dort bleiben). Beides ist erreichbar über `Res.*`
 im Paket `de.v404.honorarcraft.resources` — dieses Paket ist in `composeApp/build.gradle.kts`
 festgelegt, sonst leitet Compose es vom Gradle-Projektnamen ab. `src/jvmMain/resources/` ist
 ein klassischer Classpath-Ressourcen-Root, den PDFBox für die Schriftarten nutzt. Dateien nicht zwischen beiden

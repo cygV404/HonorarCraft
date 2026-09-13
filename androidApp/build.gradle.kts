@@ -35,4 +35,5 @@ dependencies {
     implementation(compose.runtime)
     implementation(compose.material3)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
 }

@@ -236,14 +236,41 @@ Abgeschlossen. Gewählte Versionen:
 
 ## Phase 4 — Assets und Theme übernehmen
 
-- [ ] Aus der Android-App nach `composeApp/src/commonMain/composeResources/`:
-      `montserrat_bold.ttf` (Desktop hat keinen Google-Fonts-Provider → die TTF muss
-      gebündelt werden, Montserrat in weiteren Schnitten ggf. nachladen),
-      `ui/theme/Color.kt` + `Theme.kt` + `Type.kt`, `res/drawable/`, `values-night`-Farben.
-- [ ] App-Icon vereinheitlichen: `ic_launcher-playstore.png` und
-      `~/Schreibtisch/HonorarCraft_Assets/honorarcraft_icon.png` als Quelle für die
-      Desktop-Icons (`.ico`, `.icns`, `.png` in `composeResources/drawable/`).
-- [ ] Dunkles Farbschema auch auf dem Desktop aktivieren (heute hart `Color.White` in `main.kt`).
+- [x] `montserrat_bold.ttf` liegt in `composeApp/src/commonMain/composeResources/font/` und
+      wird über `Res.font.montserrat_bold` geladen. **Der Google-Fonts-Provider ist ersatzlos
+      raus** — es gibt ihn nur auf Android, und die App nutzt ohnehin nur den fetten Schnitt.
+      Damit wurde auch `res/values/font_certs.xml` (die Zertifikatsliste des Providers)
+      überflüssig und ist gelöscht.
+- [x] `Color.kt`, `Theme.kt`, `Type.kt` liegen in `composeApp/src/commonMain/.../ui/theme/`.
+      Die einzige android-spezifische Stelle waren die dynamischen Systemfarben; sie sind
+      jetzt ein `expect fun dynamicColorSchemeOrNull(darkTheme)` — Android liefert ab API 31
+      ein Schema, der Desktop `null`, und dann greift das statische Schema.
+      **Anmerkung:** Das Compose-Theme ist nach wie vor das unveränderte Vorlagen-Lila
+      (`Purple40`/`Purple80`). Die Markenfarben `#18FFFF`/`#00E676` aus `colors.xml` stecken
+      bisher nur im Launcher-Icon. Sie sind als `BrandCyan`/`BrandGreen` mit übernommen,
+      werden aber von keinem Farbschema benutzt — falls das Schema darauf aufbauen soll, ist
+      das eine eigene Entscheidung und kein Teil des Umbaus.
+- [x] `values-night`-Farben und die Launcher-Ressourcen sind nach `androidApp/src/main/res/`
+      umgezogen; das Manifest verweist jetzt auf `@mipmap/ic_launcher`, `@string/app_name`
+      und `@style/Theme.HonorarCraftAndroid`.
+- [x] App-Icon vereinheitlicht. Die Desktop-Icons trugen bisher ein **anderes Bild** als
+      Android (blaues Buch mit Euro-Zeichen statt des „HC"-Markenzeichens); sie sind jetzt
+      alle aus `~/Schreibtisch/HonorarCraft_Assets/honorarcraft_icon.png` erzeugt.
+      Auf dem Rechner war kein Icon-Werkzeug vorhanden (kein ImageMagick, kein `icotool`,
+      kein Pillow), deshalb liegt der Generator als
+      `tools/MakeIcons.java` im Repo: `java tools/MakeIcons.java <quelle.png> <zielordner>`
+      schreibt `.ico` (7 Größen), `.icns` (9 Einträge) und `iconDeb.png`.
+      Einschränkung: Die Quelle ist 512×512, der macOS-Eintrag `ic10` (1024×1024) fehlt daher.
+      Für ein schärferes Icon auf Retina-Displays bräuchte es eine größere Quelldatei —
+      `favicon.svg` liegt im Asset-Ordner und wäre der bessere Ausgangspunkt.
+- [x] Das Theme hängt jetzt auf beiden Plattformen (`HonorarCraftTheme`), auf dem Desktop
+      ersetzt `MaterialTheme.colorScheme.background` das harte `Color.White`.
+- [ ] **Bewusst noch nicht: Dunkelmodus auf dem Desktop.** Die Screens dieses Moduls tragen
+      rund drei Dutzend fest verdrahtete Farben; mit `isSystemInDarkTheme()` wäre die
+      Oberfläche auf einem dunkel eingestellten System halb unlesbar. In `main.kt` steht
+      deshalb `HonorarCraftTheme(darkTheme = false)`. Sobald die Screens in Phase 5 durch die
+      gemeinsame Oberfläche ersetzt sind, kann der Parameter entfallen — der Vorgabewert ist
+      bereits `isSystemInDarkTheme()`.
 - [ ] Die PDF-Schriften (`Roboto-*.ttf` unter `jvmMain/resources/font/`) bleiben, wo sie
       sind — die lädt PDFBox über den ClassLoader, das ist ein anderer Mechanismus als
       Compose Resources.
