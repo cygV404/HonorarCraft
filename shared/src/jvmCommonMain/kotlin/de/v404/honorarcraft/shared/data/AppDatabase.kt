@@ -1,14 +1,14 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
-import android.content.Context
+import androidx.room.ConstructedBy
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.Transaction
 import androidx.room.TypeConverters
 import kotlinx.coroutines.flow.Flow
@@ -92,43 +92,20 @@ const val DATABASE_VERSION = 11
     exportSchema = true
 )
 @TypeConverters(Converters::class)
+@ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun invoiceDao(): InvoiceDao
     abstract fun companyDao(): CompanyDao
-
-    companion object {
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
-
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "honorarcraft_database"
-                )
-                    // Kein fallbackToDestructiveMigration: ein fehlender Migrationspfad
-                    // muss beim Start auffallen, statt still die Rechnungen zu löschen.
-                    .addMigrations(*ALL_MIGRATIONS)
-                    .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-
-        /**
-         * Schliesst die Datenbank und gibt die Instanz frei.
-         *
-         * Wird vom Import in [Backup] gebraucht: solange die Verbindung offen ist,
-         * darf die Datei darunter nicht ausgetauscht werden. Nach dem Aufruf muss
-         * die App neu gestartet werden, weil die bestehenden Flows an der
-         * geschlossenen Verbindung haengen.
-         */
-        fun closeInstance() {
-            synchronized(this) {
-                INSTANCE?.close()
-                INSTANCE = null
-            }
-        }
-    }
 }
+
+/**
+ * Room erzeugt die `actual`-Implementierung je Target selbst; deshalb steht hier ein
+ * `expect object` ohne eigenes `actual`.
+ */
+@Suppress("NO_ACTUAL_FOR_EXPECT", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
+}
+
+/** Dateiname der Datenbank. Auf beiden Plattformen derselbe. */
+const val DATABASE_FILE_NAME = "honorarcraft_database"

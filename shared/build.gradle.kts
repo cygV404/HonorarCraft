@@ -17,7 +17,19 @@ kotlin {
     }
     jvm()
 
+    // Android und Desktop sind beide JVM-Ziele. Entities und Rechenlogik brauchen
+    // java.math.BigDecimal, das in commonMain nicht verfügbar ist; deshalb hängt zwischen
+    // commonMain und den beiden Targets dieser Zwischen-Quellsatz. Kommt später ein
+    // iOS-Target dazu (offene Frage 8), muss BigDecimal dort ersetzt werden.
+    applyDefaultHierarchyTemplate()
     sourceSets {
+        val jvmCommonMain by creating { dependsOn(commonMain.get()) }
+        val jvmCommonTest by creating { dependsOn(commonTest.get()) }
+        androidMain.get().dependsOn(jvmCommonMain)
+        jvmMain.get().dependsOn(jvmCommonMain)
+        named("androidHostTest").get().dependsOn(jvmCommonTest)
+        jvmTest.get().dependsOn(jvmCommonTest)
+
         commonMain.dependencies {
             implementation(libs.kotlinx.serializationJson)
             implementation(libs.kotlinx.coroutinesCore)

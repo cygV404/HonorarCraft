@@ -1,7 +1,8 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
 import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 
 /**
  * Explizite Migrationspfade für die Room-Datenbank.
@@ -10,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * von [AppDatabase.version] hat die komplette Datenbank des Nutzers verworfen. Das ist
  * für eine Abrechnungs-App nicht tragbar; ab hier wird jeder Schritt migriert.
  *
- * Die Pfade sind aus den exportierten Schemas unter `app/schemas/` abgeleitet.
+ * Die Pfade sind aus den exportierten Schemas unter `shared/schemas/` abgeleitet.
  */
 
 /**
@@ -21,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Schemaänderung erhöht. Room verlangt trotzdem einen registrierten Pfad.
  */
 private fun noOp(from: Int, to: Int) = object : Migration(from, to) {
-    override fun migrate(db: SupportSQLiteDatabase) = Unit
+    override fun migrate(connection: SQLiteConnection) = Unit
 }
 
 val MIGRATION_3_4 = noOp(3, 4)
@@ -35,11 +36,11 @@ val MIGRATION_8_9 = noOp(8, 9)
  * den Satz ihrer Rechnung.
  */
 val MIGRATION_4_5 = object : Migration(4, 5) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL(
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
             "ALTER TABLE `invoice_entries` ADD COLUMN `rate` TEXT NOT NULL DEFAULT '23.00'"
         )
-        db.execSQL(
+        connection.execSQL(
             """
             UPDATE `invoice_entries`
                SET `rate` = (
@@ -71,34 +72,34 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
  * `foreign_keys = ON` und `= OFF`.
  */
 val MIGRATION_5_6 = object : Migration(5, 6) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("PRAGMA defer_foreign_keys = TRUE")
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("PRAGMA defer_foreign_keys = TRUE")
 
         // Positionen sichern (CREATE TABLE AS SELECT übernimmt keine Constraints)
-        db.execSQL("CREATE TABLE `_entries_backup` AS SELECT * FROM `invoice_entries`")
+        connection.execSQL("CREATE TABLE `_entries_backup` AS SELECT * FROM `invoice_entries`")
 
         // Elterntabelle ohne die Spalte `rate` neu aufbauen
-        db.execSQL(
+        connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `_new_invoices` " +
                 "(`invoiceNumber` TEXT NOT NULL, PRIMARY KEY(`invoiceNumber`))"
         )
-        db.execSQL(
+        connection.execSQL(
             "INSERT INTO `_new_invoices` (`invoiceNumber`) " +
                 "SELECT `invoiceNumber` FROM `invoices`"
         )
-        db.execSQL("DROP TABLE `invoices`")
-        db.execSQL("ALTER TABLE `_new_invoices` RENAME TO `invoices`")
+        connection.execSQL("DROP TABLE `invoices`")
+        connection.execSQL("ALTER TABLE `_new_invoices` RENAME TO `invoices`")
 
         // Positionen zurückspielen (Indizes von `invoice_entries` bleiben erhalten,
         // die Tabelle selbst wurde nie gelöscht)
-        db.execSQL("DELETE FROM `invoice_entries`")
-        db.execSQL(
+        connection.execSQL("DELETE FROM `invoice_entries`")
+        connection.execSQL(
             "INSERT INTO `invoice_entries` " +
                 "(`id`, `invoiceNumber`, `date`, `lessonUnits`, `teachingSubject`, `rate`) " +
                 "SELECT `id`, `invoiceNumber`, `date`, `lessonUnits`, `teachingSubject`, `rate` " +
                 "FROM `_entries_backup`"
         )
-        db.execSQL("DROP TABLE `_entries_backup`")
+        connection.execSQL("DROP TABLE `_entries_backup`")
     }
 }
 
@@ -110,8 +111,8 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
  * unangetastet. Die Tabelle startet leer – es gibt nichts zu übernehmen.
  */
 val MIGRATION_9_10 = object : Migration(9, 10) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL(
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `hidden_subjects` " +
                 "(`name` TEXT NOT NULL, PRIMARY KEY(`name`))"
         )
@@ -125,30 +126,30 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
  * `"Mathe "` erschienen als zwei identisch aussehende Vorschläge, ein Leerzeichen
  * im Datum hätte über `date.endsWith(jahr)` den Jahresumsatz verfälscht, und ein
  * ausgeblendetes Fach liess sich nicht mehr zurückholen, weil der Abgleich exakt
- * ist. Ab jetzt trimmt [MainViewModel.addEntryFromForm] beim Speichern.
+ * ist. Ab jetzt wird beim Speichern getrimmt.
  *
  * Keine Schemaänderung, nur Daten – die Tabellenstruktur bleibt identisch.
  */
 val MIGRATION_10_11 = object : Migration(10, 11) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL(
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
             "UPDATE `invoice_entries` SET `teachingSubject` = TRIM(`teachingSubject`) " +
                 "WHERE `teachingSubject` <> TRIM(`teachingSubject`)"
         )
-        db.execSQL(
+        connection.execSQL(
             "UPDATE `invoice_entries` SET `date` = TRIM(`date`) " +
                 "WHERE `date` <> TRIM(`date`)"
         )
         // `name` ist Primärschlüssel: erst die getrimmte Fassung anlegen (vorhandene
         // Treffer ignorieren), dann die ungetrimmte entfernen. Ein direktes UPDATE
         // würde bei bereits existierendem Gegenstück den PK verletzen.
-        db.execSQL(
+        connection.execSQL(
             "INSERT OR IGNORE INTO `hidden_subjects` (`name`) " +
                 "SELECT TRIM(`name`) FROM `hidden_subjects` WHERE `name` <> TRIM(`name`)"
         )
-        db.execSQL("DELETE FROM `hidden_subjects` WHERE `name` <> TRIM(`name`)")
+        connection.execSQL("DELETE FROM `hidden_subjects` WHERE `name` <> TRIM(`name`)")
         // Leere Namen sind nach dem Trimmen wertlos
-        db.execSQL("DELETE FROM `hidden_subjects` WHERE `name` = ''")
+        connection.execSQL("DELETE FROM `hidden_subjects` WHERE `name` = ''")
     }
 }
 

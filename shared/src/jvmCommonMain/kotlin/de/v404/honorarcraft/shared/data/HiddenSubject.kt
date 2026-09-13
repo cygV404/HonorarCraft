@@ -1,6 +1,5 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
-import androidx.annotation.Keep
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -12,7 +11,6 @@ import androidx.room.PrimaryKey
  * daraus nur aus. Dadurch bleibt das Ausblenden eines Vorschlags von den
  * Rechnungsdaten getrennt und kann keine Belege löschen.
  */
-@Keep
 @Entity(tableName = "hidden_subjects")
 data class HiddenSubject(
     @PrimaryKey val name: String

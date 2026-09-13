@@ -138,11 +138,44 @@ Abgeschlossen. Gewählte Versionen:
         kennen; `./gradlew build` bricht ohne die `dependsOn`-Zeilen am Ende von
         `shared/build.gradle.kts` mit "implicit dependency" ab. Dasselbe Muster gibt es im
         Android-Repo schon für `mergeDebugAndroidTestAssets`.
-- [ ] `InvoiceData`, `InvoiceEntry`, `CompanyData`, `HiddenSubject`, `Converters`,
-      `AppDatabase`, `Migrations` nach `shared/commonMain` kopieren; `@Keep` und
-      android-spezifische Importe entfernen.
-- [ ] `app/schemas/` mitnehmen — die Migrationskette ab Version 3 ist der Grund, warum alte
-      `.hcbackup`-Dateien weiterhin lesbar sind. Nicht neu anfangen.
+- [x] Android-Repo per `git subtree` nach `android-legacy/` importiert, History vollständig
+      (43 Commits). Das Verzeichnis ist ein **Zwischenlager**, aus dem Stück für Stück
+      umgezogen wird, und verschwindet am Ende von Phase 5.
+      Achtung bei der History: `git log -- <pfad>` zeigt wegen der Pfadverschiebung nur den
+      Import-Commit. Was wirklich funktioniert:
+      `git log --full-history -- android-legacy/<neuer pfad> <alter pfad>`.
+- [x] `InvoiceData`, `InvoiceEntry`, `CompanyData`, `HiddenSubject`, `Converters`,
+      `Constants`, `AppDatabase`, `Migrations` liegen jetzt unter
+      `shared/src/jvmCommonMain/.../shared/data/`, Paket `de.v404.honorarcraft.shared.data`.
+      `@Keep` und `androidx.annotation` sind raus.
+
+      **Nicht `commonMain`, sondern ein Zwischen-Quellsatz `jvmCommonMain`.** Die Entities und
+      die Rechenlogik hängen an `java.math.BigDecimal`, und `java.*` ist in `commonMain` nicht
+      verfügbar. Da Android und Desktop beide JVM-Ziele sind, hängt zwischen `commonMain` und
+      den Targets jetzt `jvmCommonMain` (analog `jvmCommonTest`). Preis: Kommt iOS dazu
+      (offene Frage 8), muss `BigDecimal` dort ersetzt werden — die Cent-Genauigkeit hängt
+      daran, das ist keine Fingerübung.
+- [x] Migrationen auf die KMP-API portiert: `Migration.migrate(SupportSQLiteDatabase)` gibt es
+      in `commonMain` nicht, die Signatur ist jetzt `migrate(connection: SQLiteConnection)`.
+      Das SQL selbst ist unverändert geblieben.
+- [x] `AppDatabase` aufgeteilt: DAOs, `@Database` und die Migrationsliste gemeinsam,
+      die Erzeugung je Plattform. **Android bleibt bewusst beim Android-eigenen SQLite**
+      (kein `setDriver`), damit die ausgelieferte App ihr heutiges Verhalten behält; der
+      Desktop nutzt `BundledSQLiteDriver`, weil es dort kein System-SQLite gibt.
+      Offen: ob Android später ebenfalls auf das gebündelte SQLite umgestellt wird — das
+      wäre identischeres Verhalten, aber eine Änderung an einer App mit echten Nutzerdaten.
+- [x] `app/schemas/` mitgenommen nach `shared/schemas/de.v404.honorarcraft.shared.data.AppDatabase/`
+      (Versionen 3 bis 11). **Abnahme bestanden: der portierte Code erzeugt ein bit-identisches
+      Schema 11**, `identityHash` `ff3c7c472631b050dd51d3586f067f3a` auf beiden Targets — also
+      genau der Wert der Android-App. Bestehende Datenbanken und `.hcbackup`-Dateien bleiben
+      damit lesbar. Geprüft, indem `11.json` gelöscht und neu erzeugt wurde.
+      Nicht mitgenommen: `com.juliandobrodolac.honorarcraftandroid.AppDatabase/3.json` aus der
+      Zeit vor der Paketumbenennung — liegt weiterhin in `android-legacy/` und in der History.
+- [x] `DesktopDatabaseTest` (4 Tests, grün) belegt auf dem Desktop: Rechnung mit Positionen
+      anlegen, Summen rechnen (55 h × 23 € → **1.686,67 €**, der korrekte Android-Wert),
+      Fachvorschläge nach Häufigkeit und Ausblenden ohne Belegverlust, Jahresfilter über das
+      Datum, `BigDecimal`-Satz verlustfrei durch den TypeConverter.
+- [x] Der Spike-Code ist entfernt.
 - [ ] Datenbankdatei-Pfad als `expect/actual`: Android `getDatabasePath`, Desktop
       `getAppDataFolder()` (heute `Dashboard.kt:34`).
 - [ ] **Importer** für die alten Desktop-JSONs (`company.json`, `invoices/*.json`,

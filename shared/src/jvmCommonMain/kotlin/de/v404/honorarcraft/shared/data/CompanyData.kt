@@ -1,11 +1,9 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
-import androidx.annotation.Keep
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.math.BigDecimal
 
-@Keep
 @Entity(tableName = "company_data")
 data class CompanyData(
     @PrimaryKey val id: Int = 1, // Fixed ID for single entry

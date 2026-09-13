@@ -1,4 +1,4 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
 import java.math.BigDecimal
 

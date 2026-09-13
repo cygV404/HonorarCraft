@@ -1,13 +1,11 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared.data
 
-import androidx.annotation.Keep
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.math.BigDecimal
 
-@Keep
 @Entity(
     tableName = "invoice_entries",
     foreignKeys = [

@@ -52,17 +52,48 @@ angepasst werden.
 
 ### Module
 
-- `:shared` — plattformübergreifende Logik, Targets Android + JVM. Enthält bisher nur den
-  bestandenen Room-Spike (`db/Spike*`, Wegwerf-Code); Modelle und Rechenlogik folgen in
-  Phase 2/3. Der Room-Compiler ist dort pro Target eingehängt (`kspJvm`, `kspAndroid`), und
-  die Lint-Tasks brauchen ein explizites `dependsOn` auf die KSP-Tasks, sonst bricht
-  `./gradlew build` mit "implicit dependency" ab.
+- `:shared` — plattformübergreifende Logik, Targets Android + JVM. Enthält die Room-Datenschicht
+  (`data/`), die aus der Android-App übernommen wurde. Der Room-Compiler ist pro Target
+  eingehängt (`kspJvm`, `kspAndroid`), und die Lint-Tasks brauchen ein explizites `dependsOn`
+  auf die KSP-Tasks, sonst bricht `./gradlew build` mit "implicit dependency" ab.
+- `android-legacy/` — **kein Gradle-Modul**, sondern das per `git subtree` importierte
+  Android-Repo als Zwischenlager. Von hier wird Stück für Stück umgezogen; am Ende von Phase 5
+  verschwindet das Verzeichnis. Nichts Neues dort hinzufügen.
 - `:composeApp` — Oberfläche. Targets Android + JVM. **Der gesamte Anwendungscode liegt weiterhin
   in `src/jvmMain/kotlin/de/v404/honorarcraft/`**, `commonMain` enthält nur Abhängigkeiten.
 - `:androidApp` — `MainActivity`, Manifest, `applicationId de.v404.honorarcraft`. Eigenes Modul,
   weil AGP 9 `com.android.application` nicht mehr mit dem KMP-Plugin im selben Modul zulässt;
   KMP-Module nutzen stattdessen `com.android.kotlin.multiplatform.library` und den Block
   `kotlin { androidLibrary { … } }` statt `androidTarget()`.
+
+### Quellsätze im `:shared`-Modul
+
+Der Code liegt **nicht** in `commonMain`, sondern in `jvmCommonMain` (bzw. `jvmCommonTest`) —
+einem Zwischen-Quellsatz zwischen `commonMain` und den beiden Targets. Grund: Entities und
+Rechenlogik nutzen `java.math.BigDecimal`, und `java.*` ist in `commonMain` nicht verfügbar.
+Android und Desktop sind beide JVM-Ziele, deshalb geht das. Neuer gemeinsamer Code gehört
+dorthin, sofern er JVM-APIs braucht.
+
+### Datenschicht (Room, `shared/src/jvmCommonMain/.../shared/data/`)
+
+Room 2.8 als KMP-Datenbank, Schemaversion 11, Migrationskette ab 3 in `Migrations.kt`,
+exportierte Schemas unter `shared/schemas/`. Kein `fallbackToDestructiveMigration` —
+ein fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
+
+- Migrationen nutzen die KMP-Signatur `migrate(connection: SQLiteConnection)`, **nicht**
+  `SupportSQLiteDatabase`.
+- `@ConstructedBy` plus `expect object AppDatabaseConstructor` ohne eigenes `actual` — die
+  Implementierung erzeugt Room je Target.
+- Die Datenbank wird je Plattform erzeugt: `AndroidDatabase.getDatabase(context)` ohne
+  `setDriver` (Android-eigenes SQLite, wie bisher ausgeliefert), `createDesktopDatabase(pfad)`
+  mit `BundledSQLiteDriver`.
+- **Jede Änderung an den Entities verändert den `identityHash` und damit das Schema.** Der
+  aktuelle Wert für Version 11 ist `ff3c7c472631b050dd51d3586f067f3a` und stimmt mit dem der
+  ausgelieferten Android-App überein; das ist der Grund, warum bestehende Datenbanken und
+  `.hcbackup`-Dateien lesbar bleiben. Ohne neue Migration und neue Version nichts daran ändern.
+
+Die Desktop-App nutzt diese Datenschicht **noch nicht** — sie liegt weiterhin auf JSON
+(siehe unten). Der Umstieg samt Importer steht in `KMP_PLAN.md`.
 
 ### Navigation
 
