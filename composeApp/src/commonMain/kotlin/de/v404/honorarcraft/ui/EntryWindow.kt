@@ -282,6 +282,7 @@ fun EntryWindowContent(
             // darunter schon schmaler sind.
             Column(
                 modifier = Modifier
+                    .align(Alignment.TopCenter)
                     .inhaltsbreite()
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp)

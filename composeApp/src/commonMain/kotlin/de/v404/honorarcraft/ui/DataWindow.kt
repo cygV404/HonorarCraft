@@ -373,6 +373,7 @@ fun DataWindowContent(
         ) {
             LazyColumn(
                 modifier = Modifier
+                    .align(Alignment.TopCenter)
                     .inhaltsbreite()
                     .fillMaxHeight(),
                 contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
