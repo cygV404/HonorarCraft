@@ -357,9 +357,31 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 
 ## Phase 6 — Plattformspezifisches
 
-- [ ] PDF-Erzeugung als `expect/actual`: gemeinsames Layout-Modell (Positionen, Beträge,
-      Adressblock), zwei Renderer (PDFBox / `PdfDocument`). Ziel: beide Plattformen erzeugen
-      dasselbe Dokument.
+- [x] **PDF-Erzeugung vereinheitlicht.** `shared/.../pdf/` enthält jetzt:
+      - `PdfModel.kt` — Zeichenbefehle (`Text`, `Line`, `Rect`, `Image`), Seitenmaße und das
+        `TextMeasurer`-Interface. Koordinaten zählen von **oben links** wie in der
+        Android-Vorlage.
+      - `InvoiceLayout.kt` — baut die komplette Rechnung als Befehlsliste. Einmal geschrieben,
+        für beide Plattformen.
+      - Zwei Renderer, die nur noch umsetzen: PDFBox (`jvmMain`) und `PdfDocument`
+        (`androidMain`). Der PDFBox-Renderer spiegelt die Y-Achse, weil PDFBox von unten zählt.
+      Die Schriftmetriken sind der einzige Grund, warum das Layout überhaupt etwas von der
+      Plattform wissen muss — dafür gibt es `pdfTextMeasurer()`.
+- [x] `InvoiceLayoutTest` (9 Tests, grün auf **beiden** Plattformen) nagelt das Layout fest,
+      ohne ein PDF zu öffnen: deutsches Zahlenformat, Betrag je Position aus dem vollen
+      UE-Wert, Ansage bei gemischten Sätzen, Seitenzahlen, Zeitraum aus dem Monat der ersten
+      Position, Sortierung, Datum oben oder unten je nach Unterschrift, Beschneiden langer
+      Fächer.
+- [x] **Eine Korrektur gegenüber der Android-Vorlage:** Die Zeile „UE Gesamt a 45 Min" setzte
+      dort das `BigDecimal` direkt ein und druckte damit einen englischen Punkt (`12.27`).
+      Jetzt steht überall das deutsche Format (`12,27`).
+- [ ] **Noch offen an der Schrift:** Der Desktop-Renderer bündelt Roboto, der Android-Renderer
+      nimmt weiterhin `Typeface.DEFAULT`, also die Systemschrift des Geräts. Für wirklich
+      identische Dokumente müsste die TTF auch auf der Android-Seite als Asset mitgeliefert
+      und über `Typeface.createFromFile` geladen werden.
+- [ ] **Noch offen am Ausgabeort:** Der Desktop schreibt in den frei wählbaren `pdfPath`,
+      Android fest über den MediaStore nach `Dokumente/HonorarCraft`. Ein frei wählbarer
+      Ordner auf Android bräuchte das Storage Access Framework.
 - [x] Datei-Dialoge liegen hinter der Schnittstelle `PlatformServices`
       (`composeApp/.../ui/platform/`): Unterschrift auswählen, Sicherung schreiben, Sicherung
       einlesen, Neustart. Desktop über `JFileChooser`, Android über das Storage Access
@@ -413,7 +435,30 @@ die darf sich nie ändern, sonst ist es für den Store eine neue App. Der `names
 
 ~~4.~~ — beantwortet: **Importer bauen.** Die 12 Desktop-Rechnungen wandern beim ersten Start
 in die Room-Datenbank, der Altbestand wird danach umbenannt statt gelöscht.
-6. **Honorarsatz pro Position** und die **Rechnungsnummern-Formate** aus der Android-App auch
-   auf dem Desktop — heißt: das Desktop-PDF ändert sich. Einverstanden?
+~~6.~~ — beantwortet: **Die Android-Fassung ist die Vorlage für das gemeinsame PDF.**
+Aus zwei erzeugten Beispielrechnungen mit identischen Daten (13.09.2026) ergab sich:
+
+| | Desktop (PDFBox) | Android (PdfDocument) |
+|---|---|---|
+| Zahlenformat | `23.00 €`, `282.21 €` — **englischer Dezimalpunkt** | `23,00 €`, `282,13 €` |
+| Summe | 282,21 € | 282,13 € |
+| Rundung | UE erst auf 2 Stellen gerundet, dann mal Satz | voller Wert mal Satz, Rundung am Ende |
+| Name | „Max Mustermann" | „Mustermann Max" |
+| Beschriftung | „Rechnungsnummer: 13" | „Rechnung: 13" |
+| Fußzeile | „Seite 1 von 2" | keine |
+| Schrift | Roboto gebündelt | Systemschrift des Geräts |
+| Ausgabeort | frei wählbarer `pdfPath` | fest über MediaStore nach `Dokumente/HonorarCraft` |
+
+Übernommen wird das Android-Layout, **plus zwei Dinge vom Desktop**: die Seitenzahl in der
+Fußzeile und der frei wählbare Ausgabeordner. Die Schrift wird auf beiden Seiten die
+gebündelte, sonst sieht die Rechnung je nach Gerät anders aus.
+
+**Bewusst in Kauf genommen:** Die UE-Spalte zeigt weiterhin zwei Nachkommastellen, obwohl der
+Betrag mit dem vollen Wert gerechnet wird. Wer die Rechnung von Hand nachrechnet, kommt bei
+„2,67 × 23" auf 61,41 € statt der gedruckten 61,33 €. Mehr Nachkommastellen wurden abgelehnt;
+die Summe ist richtig, nur die Zwischenzeile lädt zum Nachrechnen mit gerundeten Werten ein.
+
+~~Ursprüngliche Frage 6:~~ Honorarsatz pro Position und die Rechnungsnummern-Formate aus der
+Android-App auch auf dem Desktop — heißt: das Desktop-PDF ändert sich. Einverstanden?
 ~~7.~~ — beantwortet: keine Feldverschlüsselung, siehe "Getroffene Entscheidungen" oben.
 ~~8.~~ — beantwortet: iOS bleibt außen vor, siehe "Getroffene Entscheidungen" oben.

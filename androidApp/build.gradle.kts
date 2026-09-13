@@ -9,6 +9,7 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Darf sich nie aendern - sonst ist es fuer den Play Store eine neue App.
         applicationId = "de.v404.honorarcraft"
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -36,4 +37,7 @@ dependencies {
     implementation(compose.material3)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.splashscreen)
+
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }

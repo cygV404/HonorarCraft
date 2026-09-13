@@ -44,7 +44,8 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
-            // JVM-only: PDFBox rendert die Rechnung, JNA holt den Windows-Dokumentenpfad.
+            // PDFBox noch fuer den alten Desktop-Renderer, der bis zum Umbau von
+            // InvoiceGenerator in Betrieb bleibt. JNA holt den Windows-Dokumentenpfad.
             implementation(libs.pdfbox)
             implementation(libs.jna)
             implementation(libs.jna.platform)

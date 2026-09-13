@@ -37,6 +37,10 @@ kotlin {
             api(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
         }
+        jvmMain.dependencies {
+            // PDFBox zeichnet die Rechnung auf dem Desktop.
+            implementation(libs.pdfbox)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutinesTest)
