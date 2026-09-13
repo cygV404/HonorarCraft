@@ -2,6 +2,8 @@ package de.v404.honorarcraft.ui.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
 
 /**
  * Alles, was die Oberfläche vom Betriebssystem braucht und was sich zwischen Android und
@@ -30,6 +32,21 @@ interface PlatformServices {
 
     /** Lässt eine Sicherung auswählen und liest sie ein. */
     suspend fun importBackup(): Result<Int>?
+
+    /**
+     * Erzeugt die Rechnung als PDF und legt sie am plattformüblichen Ort ab.
+     *
+     * Gezeichnet wird auf beiden Seiten aus demselben Layout; hier unterscheidet sich nur,
+     * wohin die Datei kommt — auf dem Desktop in den eingestellten Ordner, auf Android über
+     * den MediaStore nach `Dokumente/HonorarCraft`.
+     *
+     * @return Beschreibung des Ablageorts für die Rückmeldung an den Nutzer.
+     */
+    suspend fun saveInvoicePdf(
+        invoice: InvoiceWithEntries,
+        company: CompanyData,
+        formattedInvoiceNumber: String,
+    ): Result<String>
 
     /**
      * Startet die Anwendung neu.

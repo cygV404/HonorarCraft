@@ -268,8 +268,11 @@ Abgeschlossen. Gewählte Versionen:
       Meldung bei ungültiger Stundenzahl und das Zurücksetzen.
 - [x] Abnahme (Teil 1): 25 Tests grün — 14 Rechen-Tests auf beiden Plattformen, 4 Datenbank-
       und 7 ViewModel-Tests auf dem Desktop.
-- [ ] Abnahme (Teil 2): Desktop zeigt für dieselben Daten dieselben Summen wie das Handy —
-      steht noch aus, weil die Desktop-Oberfläche die gemeinsame Schicht noch nicht nutzt.
+- [x] Abnahme (Teil 2) erbracht: Der Desktop läuft auf der gemeinsamen Schicht. Beim ersten
+      Start wurden die echten Daten übernommen — 10 Rechnungen, 64 Positionen, Firmendaten
+      samt entschlüsselter Identitätsfelder, Schemaversion 11, Jahresumsatz 2026 = 4.216,67 €
+      (die erwarteten 61 Cent unter dem alten Wert). Der Altbestand liegt in
+      `~/.honorarcraft/vor-room-2026-09-13/`.
 
 ## Phase 4 — Assets und Theme übernehmen
 
@@ -333,8 +336,10 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
       - `BuildConfig.VERSION_NAME` gibt es auf dem Desktop nicht; die angezeigte Version steht
         jetzt als `Constants.APP_VERSION` im gemeinsamen Modul. **Dritte Stelle, die bei einem
         Release mitgepflegt werden muss** — neben `packageVersion` und `versionName`.
-- [ ] `EntryWindow.kt` (513 Zeilen) — braucht nur den Ersatz von `Toast` und einen Haken für
-      die PDF-Erzeugung.
+- [x] `EntryWindow.kt` liegt in `commonMain`. Der Haken für die PDF-Erzeugung ist
+      `PlatformServices.saveInvoicePdf(...)`: gezeichnet wird aus dem gemeinsamen Layout, nur
+      der Ablageort unterscheidet sich. **Die Rechnungsnummer wird jetzt erst nach dem
+      erfolgreichen Schreiben hochgezählt** — vorher sprang sie auch bei einem Fehlschlag weiter.
 - [x] `DataWindow.kt` liegt in `commonMain`. Möglich wurde das erst durch die
       Plattformschicht aus Phase 6; `Uri`, `Intent`, `BitmapFactory` und die
       Activity-Launcher sind restlos verschwunden.
@@ -347,11 +352,22 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
       `PlatformServices.pickSignatureImage()`, und der Screen bekommt nur noch den fertigen
       Pfad. Damit ist auch der Toast bei Kopierfehlern weg; Meldungen laufen über
       `MainViewModel.showMessage`.
-- [ ] Der adaptive Rahmen (`HonorarCraftApp`) mit Seitenleiste ab ca. 900 dp und Pager
-      darunter. Braucht alle vier Screens.
-- [ ] Desktop-Navigation (`String`-State in `main.kt`) durch dieselbe Tab-/Pager-Logik wie
-      auf Android ersetzen.
-- [ ] `minimumSize` von 1440×900 senken, sonst ist das Fenster auf kleinen Notebooks unbedienbar.
+- [x] Der adaptive Rahmen `HonorarCraftApp` steht in `commonMain`. Ab **900 dp** Fensterbreite
+      eine feste `NavigationRail` ohne Wischen, darunter der Pager mit Leiste unten wie bisher
+      auf Android. 900 dp liegt knapp über Materials „expanded"-Grenze: Tablet quer und jedes
+      Desktop-Fenster bekommen die Seitenleiste, ein Handy nie.
+      Der Dialog für ungespeicherte Änderungen und die Rückmeldungen aus dem ViewModel
+      (jetzt als Snackbar statt Toast) hängen ebenfalls dort.
+- [x] Die Desktop-Navigation über den `String`-State in `main.kt` ist ersatzlos weg. `main.kt`
+      öffnet nur noch das Fenster und ruft `HonorarCraftApp` auf.
+- [x] **Die alten Desktop-Screens sind gelöscht**: `Dashboard.kt`, `DataWindowContent.kt`,
+      `InvoiceGenerator.kt`, dazu das alte Datenmodell (`InvoiceData`, `InvoiceEntry`,
+      `CompanyData` mit `CryptoHelper`), der `SuggestionManager`, `createInvoicePdf.kt` sowie
+      die nicht mehr benutzten `ComposeDatePicker` und `WavyCircularProgressIndicator`.
+      Damit sind auch `totalCostsHours` / `totalCostsLessonUnits` mit ihrer vertauschten
+      Benennung verschwunden — der offene Punkt aus Phase 3.
+- [x] `minimumSize` von 1440×900 auf 800×600 gesenkt. Unterhalb von 900 dp greift dieselbe
+      Pager-Ansicht wie auf dem Handy, das Fenster bleibt also bedienbar.
 - [ ] Dialoge, die es nur auf einer Seite gibt, angleichen: `AboutDialog` (Android) und
       der Werkseinstellungen-Dialog (Desktop).
 

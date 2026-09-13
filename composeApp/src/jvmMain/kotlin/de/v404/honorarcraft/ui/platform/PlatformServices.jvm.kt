@@ -3,6 +3,9 @@ package de.v404.honorarcraft.ui.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import de.v404.honorarcraft.shared.backup.Backup
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.pdf.createInvoicePdf
 import de.v404.honorarcraft.shared.data.DesktopDatabase
 import de.v404.honorarcraft.shared.desktopAppDataFolder
 import de.v404.honorarcraft.shared.logError
@@ -72,6 +75,25 @@ class DesktopPlatformServices : PlatformServices {
             closeDatabase = { DesktopDatabase.close() },
         )
     }
+
+    /**
+     * Schreibt die Rechnung in den eingestellten Ordner. Fehlt die Angabe, landet sie im
+     * Dokumentenordner des Nutzers.
+     */
+    override suspend fun saveInvoicePdf(
+        invoice: InvoiceWithEntries,
+        company: CompanyData,
+        formattedInvoiceNumber: String,
+    ): Result<String> = runCatching {
+        val ordner = company.pdfPath.takeIf { it.isNotBlank() }?.let(::File)
+            ?: File(System.getProperty("user.home"), "Dokumente/Honorarabrechnungen")
+        withContext(Dispatchers.IO) {
+            ordner.mkdirs()
+            val ziel = File(ordner, "Rechnung_$formattedInvoiceNumber.pdf")
+            createInvoicePdf(invoice, company, formattedInvoiceNumber, ziel.outputStream())
+            ziel.absolutePath
+        }
+    }.onFailure { logError("PlatformServices", "PDF konnte nicht geschrieben werden", it) }
 
     /**
      * Auf dem Desktop gibt es keinen Weg, sich selbst sauber neu zu starten, ohne den

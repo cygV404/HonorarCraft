@@ -1,8 +1,11 @@
 package de.v404.honorarcraft.ui.platform
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -10,6 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import de.v404.honorarcraft.shared.backup.Backup
 import de.v404.honorarcraft.shared.data.AndroidDatabase
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.pdf.createInvoicePdf
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
 import de.v404.honorarcraft.shared.logError
 import kotlinx.coroutines.CompletableDeferred
@@ -69,6 +75,33 @@ private class AndroidPlatformServices(
             closeDatabase = { AndroidDatabase.closeInstance() },
         )
     }
+
+    /**
+     * Legt die Rechnung über den MediaStore in `Dokumente/HonorarCraft` ab.
+     *
+     * Seit minSdk 29 gibt es nur noch diesen Weg: der früher nötige Zweig für Android 7 bis 9
+     * schrieb direkt in den öffentlichen Ordner und brauchte dafür WRITE_EXTERNAL_STORAGE.
+     */
+    override suspend fun saveInvoicePdf(
+        invoice: InvoiceWithEntries,
+        company: CompanyData,
+        formattedInvoiceNumber: String,
+    ): Result<String> = runCatching {
+        val ordner = "${Environment.DIRECTORY_DOCUMENTS}/HonorarCraft"
+        val werte = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "Rechnung_$formattedInvoiceNumber.pdf")
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, ordner)
+        }
+        val resolver = context.contentResolver
+        val ziel = resolver.insert(MediaStore.Files.getContentUri("external"), werte)
+        checkNotNull(ziel) { "Datei konnte im MediaStore nicht angelegt werden" }
+
+        val strom = withContext(Dispatchers.IO) { resolver.openOutputStream(ziel) }
+        checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
+        createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
+        ordner
+    }.onFailure { logError("PlatformServices", "PDF konnte nicht geschrieben werden", it) }
 
     override fun restartApp() {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)

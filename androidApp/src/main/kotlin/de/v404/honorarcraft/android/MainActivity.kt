@@ -3,20 +3,25 @@ package de.v404.honorarcraft.android
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.Text
-import de.v404.honorarcraft.shared.platformName
+import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import de.v404.honorarcraft.ui.HonorarCraftApp
+import de.v404.honorarcraft.ui.platform.rememberMainViewModel
 import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 
 /**
- * Geruest fuer Phase 1/4. Der echte Bildschirm kommt in Phase 5 aus :composeApp/commonMain;
- * das gemeinsame Theme haengt hier bereits.
+ * Einstiegspunkt auf Android. Alles Sichtbare kommt aus `:composeApp/commonMain`; hier stehen
+ * nur die Dinge, die es nur auf Android gibt: Startbildschirm und randlose Darstellung.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
         setContent {
             HonorarCraftTheme {
-                Text("HonorarCraft läuft auf ${platformName()}")
+                HonorarCraftApp(viewModel = rememberMainViewModel())
             }
         }
     }

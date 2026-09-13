@@ -1,6 +1,5 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.ui
 
-import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -49,16 +48,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.v404.honorarcraftandroid.ui.theme.HonorarCraftAndroidTheme
+import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
 import java.util.Locale
+import de.v404.honorarcraft.shared.MainViewModel
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceFormat
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.ui.platform.LocalPlatformServices
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun EntryWindowScreen(
@@ -66,6 +73,8 @@ fun EntryWindowScreen(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
+    val platform = LocalPlatformServices.current
+    val scope = rememberCoroutineScope()
     val currentInvoiceWithEntries by mainViewModel.currentInvoiceWithEntries.collectAsState()
     val formattedInvoiceNumber by mainViewModel.formattedInvoiceNumber.collectAsState()
     val allInvoiceNumbers by mainViewModel.allInvoiceNumbers.collectAsState()
@@ -85,9 +94,22 @@ fun EntryWindowScreen(
         invoiceYear = invoiceYear,
         invoiceMonth = invoiceMonth,
         onInvoiceSelect = { mainViewModel.setSelectedInvoiceNumber(it) },
-        onGeneratePdf = { context, cd, iwe ->
-            mainViewModel.generatePdf(context, cd, iwe)
+        onGeneratePdf = { cd, iwe ->
+            scope.launch {
+                mainViewModel.setLoading(true)
+                val ergebnis = platform.saveInvoicePdf(iwe, cd, formattedInvoiceNumber)
+                mainViewModel.setLoading(false)
+                ergebnis.onSuccess { ort ->
+                    mainViewModel.showMessage("PDF gespeichert unter $ort")
+                    // Erst nach dem erfolgreichen Schreiben hochzaehlen, sonst springt die
+                    // Nummer bei einem Fehlschlag weiter.
+                    mainViewModel.incrementInvoiceNumber()
+                }.onFailure {
+                    mainViewModel.showMessage("PDF konnte nicht erstellt werden")
+                }
+            }
         },
+        onMessage = { mainViewModel.showMessage(it) },
         onDeleteEntries = { mainViewModel.deleteEntries(it) },
         onDeleteInvoice = { mainViewModel.deleteInvoice(it) },
         selectedTabIndex = selectedTabIndex,
@@ -107,7 +129,9 @@ fun EntryWindowContent(
     invoiceYear: Int,
     invoiceMonth: Int,
     onInvoiceSelect: (String) -> Unit,
-    onGeneratePdf: (android.content.Context, CompanyData, InvoiceWithEntries) -> Unit,
+    onGeneratePdf: (CompanyData, InvoiceWithEntries) -> Unit,
+    /** Kurze Rückmeldung an den Nutzer, etwa bei unvollständigen Daten. */
+    onMessage: (String) -> Unit,
     onDeleteEntries: (List<InvoiceEntry>) -> Unit,
     onDeleteInvoice: (String) -> Unit,
     selectedTabIndex: Int,
@@ -122,16 +146,13 @@ fun EntryWindowContent(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var invoiceToDelete by remember { mutableStateOf<String?>(null) }
 
-    val context = LocalContext.current
-
-    // Seit minSdk 29 schreibt die PDF ueber den MediaStore - dafuer braucht es
-    // keine Berechtigung mehr. Die frueher noetige Laufzeitabfrage fuer
-    // WRITE_EXTERNAL_STORAGE ist damit entfallen.
+    // Wohin die Datei kommt, entscheidet die Plattformschicht: auf Android der MediaStore
+    // (seit minSdk 29 ohne Berechtigung), auf dem Desktop der eingestellte Ordner.
     fun requestPdfGeneration() {
         if (companyData != null && invoiceWithEntries != null) {
-            onGeneratePdf(context, companyData, invoiceWithEntries)
+            onGeneratePdf(companyData, invoiceWithEntries)
         } else {
-            Toast.makeText(context, "Daten unvollstaendig", Toast.LENGTH_SHORT).show()
+            onMessage("Daten unvollständig")
         }
     }
 
@@ -489,10 +510,10 @@ fun EntryCard(
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 917)
+@Preview
 @Composable
 fun EntryWindowPreview() {
-    HonorarCraftAndroidTheme {
+    HonorarCraftTheme {
         EntryWindowContent(
             displayInvoiceNumber = "1",
             allInvoiceNumbers = listOf("1", "2"),
@@ -503,7 +524,8 @@ fun EntryWindowPreview() {
             invoiceYear = 2026,
             invoiceMonth = 8,
             onInvoiceSelect = {},
-            onGeneratePdf = { _, _, _ -> },
+            onGeneratePdf = { _, _ -> },
+            onMessage = {},
             onDeleteEntries = {},
             onDeleteInvoice = {},
             selectedTabIndex = 2,
