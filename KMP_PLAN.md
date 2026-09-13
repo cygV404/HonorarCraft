@@ -343,7 +343,28 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 - [ ] PDF-Erzeugung als `expect/actual`: gemeinsames Layout-Modell (Positionen, Beträge,
       Adressblock), zwei Renderer (PDFBox / `PdfDocument`). Ziel: beide Plattformen erzeugen
       dasselbe Dokument.
-- [ ] Datei-Dialoge: `JFileChooser` (Desktop) vs. Storage Access Framework (Android).
+- [x] Datei-Dialoge liegen hinter der Schnittstelle `PlatformServices`
+      (`composeApp/.../ui/platform/`): Unterschrift auswählen, Sicherung schreiben, Sicherung
+      einlesen, Neustart. Desktop über `JFileChooser`, Android über das Storage Access
+      Framework.
+      Bewusst eine Schnittstelle statt eines `expect`-Objekts: Androids Dialoge sind
+      Activity-Ergebnisse und müssen in der Komposition angemeldet werden. Damit die
+      gemeinsame Oberfläche sie trotzdem als schlichte `suspend`-Aufrufe benutzen kann, wartet
+      je ein `CompletableDeferred` auf das Ergebnis. Nebenbei ist die Schnittstelle im Test
+      austauschbar.
+      **Auf beiden Plattformen wird die ausgewählte Unterschrift kopiert, nicht verlinkt.**
+      Auf Android ist die Auswahl nur ein kurzlebiges Zugriffsrecht auf eine fremde Datei, ein
+      gemerkter Pfad dorthin wäre beim nächsten Start wertlos.
+      Einschränkung Desktop: `restartApp()` beendet die Anwendung nur — ohne Kenntnis des
+      Startbefehls gibt es keinen sauberen Selbstneustart. Die Oberfläche muss das ansagen.
+- [x] Bildladen als `expect suspend fun loadImageFromFile(pfad, maxKante)` — Android über
+      `BitmapFactory` mit `inSampleSize`, Desktop über `ImageIO` mit anschließendem Skalieren.
+      Verkleinert wird schon beim Laden: eine abfotografierte Unterschrift hat leicht mehrere
+      tausend Pixel, und die vollständig in den Speicher zu legen, nur um sie als Briefmarke
+      anzuzeigen, hat die Android-App früher schon an den Rand gebracht.
+- [x] `DesktopDatabase` als Gegenstück zu `AndroidDatabase` — der Import tauscht die Datei
+      unter der Verbindung aus und braucht einen Weg, sie zu schließen und neu zu öffnen.
+      `desktopAppDataFolder()` ist dafür nach `:shared` gewandert.
 - [x] Backup/Restore liegt in `shared/.../backup/Backup.kt` und gilt für beide Plattformen.
       Da Android und Desktop beide JVM sind, brauchte es **keine** `Uri`-Abstraktion: die
       gemeinsame Schicht nimmt fertige `InputStream`/`OutputStream` entgegen, die Auswahl der

@@ -34,6 +34,10 @@ kotlin {
             implementation(libs.kotlinx.serializationJson)
             implementation(compose.materialIconsExtended)
         }
+        androidMain.dependencies {
+            // Die Datei-Dialoge laufen über Activity-Ergebnisse und brauchen die Launcher.
+            implementation(libs.androidx.activity.compose)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
