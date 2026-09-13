@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 kotlin {
@@ -10,15 +12,36 @@ kotlin {
         namespace = "de.v404.honorarcraft.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
+        // Damit commonTest auch gegen das Android-Target läuft (ab Phase 3 der CalculationTest).
+        withHostTest {}
     }
     jvm()
 
     sourceSets {
         commonMain.dependencies {
             implementation(libs.kotlinx.serializationJson)
+            implementation(libs.kotlinx.coroutinesCore)
+            api(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutinesTest)
         }
     }
 }
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+dependencies {
+    // Room-Compiler muss pro Target eingehängt werden, ein gemeinsames ksp(...) reicht nicht.
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspJvm", libs.androidx.room.compiler)
+}
+
+// Die Lint-Model-Tasks lesen das KSP-Ausgabeverzeichnis, ohne die Abhängigkeit zu kennen.
+// Ohne diese Zeilen bricht `./gradlew build` mit "implicit dependency" ab.
+tasks.matching { it.name.startsWith("lint") || it.name.endsWith("LintModel") }
+    .configureEach { dependsOn(tasks.matching { it.name.startsWith("ksp") }) }

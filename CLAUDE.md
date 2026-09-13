@@ -52,8 +52,11 @@ angepasst werden.
 
 ### Module
 
-- `:shared` — plattformübergreifende Logik, Targets Android + JVM. Noch fast leer; wird in
-  Phase 2/3 mit Modellen, Room und Rechenlogik gefüllt.
+- `:shared` — plattformübergreifende Logik, Targets Android + JVM. Enthält bisher nur den
+  bestandenen Room-Spike (`db/Spike*`, Wegwerf-Code); Modelle und Rechenlogik folgen in
+  Phase 2/3. Der Room-Compiler ist dort pro Target eingehängt (`kspJvm`, `kspAndroid`), und
+  die Lint-Tasks brauchen ein explizites `dependsOn` auf die KSP-Tasks, sonst bricht
+  `./gradlew build` mit "implicit dependency" ab.
 - `:composeApp` — Oberfläche. Targets Android + JVM. **Der gesamte Anwendungscode liegt weiterhin
   in `src/jvmMain/kotlin/de/v404/honorarcraft/`**, `commonMain` enthält nur Abhängigkeiten.
 - `:androidApp` — `MainActivity`, Manifest, `applicationId de.v404.honorarcraft`. Eigenes Modul,

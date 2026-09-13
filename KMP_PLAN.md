@@ -118,11 +118,26 @@ Abgeschlossen. Gewählte Versionen:
 
 ## Phase 2 — Datenschicht teilen (das technische Risiko)
 
-- [ ] **Spike zuerst:** Room 2.8.4 als KMP-Datenbank mit `androidx.sqlite:sqlite-bundled` 2.6.2
-      auf dem JVM-Desktop zum Laufen bringen — eine Entity, ein DAO, ein Flow. Erst wenn
-      das steht, den Rest verschieben. Rückfallebene: SQLite über JDBC (Entscheidung 3).
-      Gutes Zeichen: `room-runtime` 2.8.4 wird bereits als KMP-Artefakt mit eigener
-      `jvm`-Variante ausgeliefert (neben `android`, `ios*`, `linux*`).
+- [x] **Spike bestanden.** Room 2.8.4 läuft mit `androidx.sqlite:sqlite-bundled` 2.6.2 auf dem
+      JVM-Desktop: `SpikeItem` / `SpikeDao` / `SpikeDatabase` in `shared/commonMain`, der Test
+      `SpikeDatabaseTest` in `shared/src/jvmTest` legt eine Datei an, schreibt zwei Zeilen,
+      liest sie über einen `Flow` und summiert. Grün. **Die Rückfallebene SQLite/JDBC wird
+      nicht gebraucht.** Der Wegwerf-Code verschwindet mit dem Umzug der echten Entities.
+
+      Das gehörte dazu, damit es baut:
+      - `room-runtime` 2.8.4 ist ein echtes KMP-Artefakt mit eigener `jvm`-Variante.
+      - Der Room-Compiler muss **pro Target** eingehängt werden (`add("kspJvm", …)` und
+        `add("kspAndroid", …)`); ein gemeinsames `ksp(...)` greift im KMP-Modul nicht.
+      - Die Datenbank braucht `@ConstructedBy` mit einem `expect object …
+        RoomDatabaseConstructor<…>` ohne eigenes `actual` — die generiert Room je Target selbst.
+      - Auf dem Desktop wird die Datenbank über `Room.databaseBuilder<T>(name = pfad)` plus
+        `.setDriver(BundledSQLiteDriver())` gebaut, also ohne System-SQLite.
+      - `withHostTest {}` im `androidLibrary`-Block, sonst läuft `commonTest` nicht gegen das
+        Android-Target (wichtig ab Phase 3 für den `CalculationTest`).
+      - Die Lint-Tasks von AGP lesen das KSP-Ausgabeverzeichnis, ohne die Abhängigkeit zu
+        kennen; `./gradlew build` bricht ohne die `dependsOn`-Zeilen am Ende von
+        `shared/build.gradle.kts` mit "implicit dependency" ab. Dasselbe Muster gibt es im
+        Android-Repo schon für `mergeDebugAndroidTestAssets`.
 - [ ] `InvoiceData`, `InvoiceEntry`, `CompanyData`, `HiddenSubject`, `Converters`,
       `AppDatabase`, `Migrations` nach `shared/commonMain` kopieren; `@Keep` und
       android-spezifische Importe entfernen.
