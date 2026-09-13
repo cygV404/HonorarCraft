@@ -245,11 +245,14 @@ Abgeschlossen. Gewählte Versionen:
       Die einzige android-spezifische Stelle waren die dynamischen Systemfarben; sie sind
       jetzt ein `expect fun dynamicColorSchemeOrNull(darkTheme)` — Android liefert ab API 31
       ein Schema, der Desktop `null`, und dann greift das statische Schema.
-      **Anmerkung:** Das Compose-Theme ist nach wie vor das unveränderte Vorlagen-Lila
-      (`Purple40`/`Purple80`). Die Markenfarben `#18FFFF`/`#00E676` aus `colors.xml` stecken
-      bisher nur im Launcher-Icon. Sie sind als `BrandCyan`/`BrandGreen` mit übernommen,
-      werden aber von keinem Farbschema benutzt — falls das Schema darauf aufbauen soll, ist
-      das eine eigene Entscheidung und kein Teil des Umbaus.
+- [x] **Farbschema aufs Branding ausgerichtet.** Das Vorlagen-Lila ist weg; beide Schemata
+      leiten sich aus `BrandCyan` (#18FFFF) und `BrandGreen` (#00E676) ab. Im Dunkelmodus
+      stehen die Markenfarben unverändert, so wie das Icon auf dem schwarzen Startbildschirm;
+      im Hellmodus wären sie unlesbar (Cyan auf Weiß), dort werden dunkle Töne derselben
+      Farbtöne verwendet und die hellen Originale tauchen als Container-Farben wieder auf.
+      **`dynamicColor` ist jetzt standardmäßig aus** — Androids dynamische Farben hätten das
+      Markenschema auf jedem Gerät überschrieben, also genau das verhindert, wofür das
+      Branding da ist.
 - [x] `values-night`-Farben und die Launcher-Ressourcen sind nach `androidApp/src/main/res/`
       umgezogen; das Manifest verweist jetzt auf `@mipmap/ic_launcher`, `@string/app_name`
       und `@style/Theme.HonorarCraftAndroid`.
@@ -279,9 +282,12 @@ Abgeschlossen. Gewählte Versionen:
 
 Umfang hängt an Frage 5. Grobrichtung:
 
+**Entschieden:** Dieselben vier Bereiche auf beiden Plattformen (Übersicht, Erstellen, PDF,
+Daten). Handy: Pager mit Tabs am unteren Rand wie bisher. Desktop: dauerhaft sichtbare
+Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
+
 - [ ] Gemeinsame Screens in `composeApp/commonMain`, Layout-Unterschiede über eine
-      Breiten-Abfrage (Handy: Pager mit 4 Tabs; Desktop: breite Ansicht) statt über zwei
-      getrennte Implementierungen.
+      Breiten-Abfrage statt über zwei getrennte Implementierungen.
 - [ ] Desktop-Navigation (`String`-State in `main.kt`) durch dieselbe Tab-/Pager-Logik wie
       auf Android ersetzen.
 - [ ] `minimumSize` von 1440×900 senken, sonst ist das Fenster auf kleinen Notebooks unbedienbar.
@@ -309,9 +315,8 @@ die darf sich nie ändern, sonst ist es für den Store eine neue App. Der `names
 
 ~~1., 2., 3. und 5.~~ — beantwortet, siehe "Getroffene Entscheidungen" oben.
 
-4. **Alte Desktop-Daten:** Importer bauen (deine 12 Rechnungen aus `~/.honorarcraft`) oder
-   reicht es, einmalig ein `.hcbackup` vom Handy einzuspielen und den Desktop-Altbestand
-   fallen zu lassen?
+~~4.~~ — beantwortet: **Importer bauen.** Die 12 Desktop-Rechnungen wandern beim ersten Start
+in die Room-Datenbank, der Altbestand wird danach umbenannt statt gelöscht.
 6. **Honorarsatz pro Position** und die **Rechnungsnummern-Formate** aus der Android-App auch
    auf dem Desktop — heißt: das Desktop-PDF ändert sich. Einverstanden?
 7. **Verschlüsselung:** Desktop verschlüsselt IBAN/Steuernummer/Name mit AES im
