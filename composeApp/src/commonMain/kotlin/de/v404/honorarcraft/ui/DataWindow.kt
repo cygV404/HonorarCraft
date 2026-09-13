@@ -366,6 +366,10 @@ fun DataWindowContent(
 
         Box(
             modifier = Modifier
+                // weight(1f) wirkt nur auf die Hoehe. Ohne fillMaxWidth misst sich die Box an
+                // ihrem Inhalt - also an den begrenzten 720 dp - und die Column setzt sie
+                // linksbuendig. Die Zentrierung haette dann keinen Platz zum Zentrieren.
+                .fillMaxWidth()
                 .weight(1f)
                 .imePadding()
                 .background(MaterialTheme.colorScheme.background),

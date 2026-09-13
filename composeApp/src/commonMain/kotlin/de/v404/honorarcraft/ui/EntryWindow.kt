@@ -273,6 +273,9 @@ fun EntryWindowContent(
 
         Box(
             modifier = Modifier
+                // Siehe DataWindow: weight(1f) allein laesst die Box auf Inhaltsbreite
+                // schrumpfen, dann steht der begrenzte Block links statt mittig.
+                .fillMaxWidth()
                 .weight(1f)
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.TopCenter,
