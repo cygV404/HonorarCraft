@@ -62,6 +62,13 @@ HonorarCraft/                     (dieses Repo, umbenanntes Root-Projekt)
 └── androidApp/                   MainActivity, Manifest, Splashscreen, applicationId
 ```
 
+**Zur AGP-Version:** Der Android-Katalog stand auf 9.3.2, das Projekt nutzt **9.1.1**. Grund
+ist nicht Gradle, sondern die IDE: Das Android-Plugin von IntelliJ IDEA unterstützt derzeit
+höchstens 9.1.0/9.1.1 und verweigert den Sync mit der Meldung „The project is using an
+incompatible version (AGP 9.3.2)". Android Studio 2026.1 käme mit 9.3.2 zurecht — solange
+dieses Projekt aber in IDEA bearbeitet wird, gilt die niedrigere Grenze. Ein Anheben ist
+jederzeit möglich, sobald die IDE nachzieht; der Build läuft mit beiden Versionen.
+
 **`androidApp` ist zwingend, nicht optional.** Ab AGP 9 lassen sich `com.android.application`
 und `com.android.library` nicht mehr mit dem KMP-Plugin im selben Modul kombinieren
 (harter Fehler beim Anwenden des Plugins). KMP-Module nutzen stattdessen
@@ -97,7 +104,7 @@ Abgeschlossen. Gewählte Versionen:
 | Compose Hot Reload | 1.0.0 | 1.2.0 |
 | Lifecycle (jetbrains) | 2.9.6 | 2.11.0 |
 | kotlinx-serialization | 1.6.0, Plugin hart 1.9.0 | 1.11.0, Plugin an Kotlin gebunden |
-| AGP / KSP / Room / sqlite | — | 9.3.2 / 2.3.11 / 2.8.4 / 2.6.2 |
+| AGP / KSP / Room / sqlite | — | 9.1.1 / 2.3.11 / 2.8.4 / 2.6.2 |
 
 - [x] Kotlin, Compose und Gradle gehoben; Serialization-Plugin hängt jetzt an der
       Kotlin-Version statt auf 1.9.0 festgenagelt zu sein.

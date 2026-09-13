@@ -41,6 +41,10 @@ JDK 17 (CI, `qodana.yaml` und `.idea/misc.xml` legen alle 17 fest). Gradle Confi
 
 Für Android-Builds muss `local.properties` ein `sdk.dir` enthalten (die Datei ist gitignored).
 
+**AGP bleibt auf 9.1.1**, obwohl 9.4 verfügbar ist: Das Android-Plugin von IntelliJ IDEA
+unterstützt höchstens 9.1.x und verweigert sonst den Gradle-Sync. Ein Anheben erst, wenn die
+IDE nachzieht — oder wenn das Projekt nach Android Studio umzieht.
+
 Die CI (`.github/workflows/package.yml`) paketiert bei Push auf `main` nur auf `windows-latest` und `macos-latest`;
 das Linux-`.deb` wird nicht von der CI gebaut. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter — einen lokalen
 Lint-Task gibt es nicht.
