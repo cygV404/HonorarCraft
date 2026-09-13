@@ -607,7 +607,7 @@ fun DataWindowContent(
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        "PNG auswählen",
+                                        "Unterschrift als Bild auswählen",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

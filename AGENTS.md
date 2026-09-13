@@ -4,7 +4,7 @@
 This is an Android invoice management app for educational services using Jetpack Compose and Room database. The app manages invoices with entries for lesson units, calculates revenue, and generates PDFs.
 
 Key components:
-- **MainActivity**: Entry point with splash screen and horizontal pager navigation (4 tabs: Dashboard, Create, Preview, Data)
+- **MainActivity**: Entry point with splash screen and horizontal pager navigation (4 tabs: Dashboard, Create, PDF, Data)
 - **MainViewModel**: Central state management using Kotlin Flows for reactive UI updates
 - **AppDatabase**: Room database with InvoiceData, InvoiceEntry, CompanyData entities
 - **Screens**: DashboardScreen (revenue/year), CreateInvoiceScreen (add entries), EntryWindowScreen (view/edit/generate PDF), DataWindowScreen (company settings)

@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AddCard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -128,11 +128,11 @@ fun MainAppContent() {
             }
     }
 
-    val tabs = listOf("Übersicht", "Erstellen", "Vorschau", "Daten")
+    val tabs = listOf("Übersicht", "Erstellen", "PDF", "Daten")
     val icons = listOf(
         Icons.Default.Home,
         Icons.Default.AddCard,
-        Icons.AutoMirrored.Filled.List,
+        Icons.Default.PictureAsPdf,
         Icons.Default.Person
     )
 
