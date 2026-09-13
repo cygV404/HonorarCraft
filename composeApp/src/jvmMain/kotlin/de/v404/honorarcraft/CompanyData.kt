@@ -1,4 +1,4 @@
-package app.accounting.accountingapp
+package de.v404.honorarcraft
 
 
 import kotlinx.serialization.Serializable
@@ -13,6 +13,7 @@ import javax.crypto.spec.SecretKeySpec
 
 object CryptoHelper {
     private const val ALGORITHM = "AES"
+    // Knotenname bleibt historisch - hier liegt der AES-Schluessel bestehender Installationen.
     private val prefs = Preferences.userRoot().node("app/accounting/honorarcraft")
 
     private val KEY: ByteArray by lazy {

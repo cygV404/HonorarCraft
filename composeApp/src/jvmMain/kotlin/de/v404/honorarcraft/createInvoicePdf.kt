@@ -1,4 +1,4 @@
-package app.accounting.accountingapp
+package de.v404.honorarcraft
 
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage

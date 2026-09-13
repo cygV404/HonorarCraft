@@ -1,8 +1,13 @@
 name: Build Desktop Apps
 
+# Automatischer Build bei Push ist waehrend des KMP-Umbaus abgeschaltet
+# (siehe KMP_PLAN.md). Der Workflow laeuft nur noch manuell ueber
+# "Actions -> Build Desktop Apps -> Run workflow".
+# Zum Reaktivieren die folgenden drei Zeilen wieder einkommentieren.
 on:
-  push:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:

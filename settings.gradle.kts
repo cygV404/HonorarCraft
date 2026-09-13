@@ -1,4 +1,4 @@
-rootProject.name = "accountingapp"
+rootProject.name = "HonorarCraft"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
@@ -34,3 +34,5 @@ plugins {
 }
 
 include(":composeApp")
+include(":shared")
+include(":androidApp")

@@ -3,20 +3,26 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0"
-
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
 
-
+    // Android-Target als KMP-Library (AGP 9). Die eigentliche Android-App liegt in :androidApp.
+    androidLibrary {
+        namespace = "de.v404.honorarcraft.ui"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
     jvm()
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.shared)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -25,12 +31,8 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-            implementation("org.apache.pdfbox:pdfbox:2.0.30")
+            implementation(libs.kotlinx.serializationJson)
             implementation(compose.materialIconsExtended)
-            implementation("net.java.dev.jna:jna:5.13.0")
-            implementation("net.java.dev.jna:jna-platform:5.13.0")
-
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -38,16 +40,23 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
-
-
+            // JVM-only: PDFBox rendert die Rechnung, JNA holt den Windows-Dokumentenpfad.
+            implementation(libs.pdfbox)
+            implementation(libs.jna)
+            implementation(libs.jna.platform)
         }
     }
 }
 
 
+// Fester Paketname für die generierte Res-Klasse - sonst haengt er am Projektnamen.
+compose.resources {
+    packageOfResClass = "de.v404.honorarcraft.resources"
+}
+
 compose.desktop {
     application {
-        mainClass = "app.accounting.accountingapp.MainKt"
+        mainClass = "de.v404.honorarcraft.MainKt"
 
         buildTypes {
             release {
@@ -80,7 +89,7 @@ compose.desktop {
             macOS {
 
                 iconFile.set(project.file("src/jvmMain/composeResources/drawable/iconMacOS.icns"))
-                bundleID = "app.accounting.accountingapp"
+                bundleID = "de.v404.honorarcraft"
             }
 
             linux {

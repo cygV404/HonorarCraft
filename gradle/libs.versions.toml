@@ -1,12 +1,24 @@
 [versions]
-androidx-lifecycle = "2.9.6"
-composeHotReload = "1.0.0"
-composeMultiplatform = "1.9.3"
-junit = "4.13.2"
-kotlin = "2.2.21"
+# Kotlin und Compose sind an die Android-App angeglichen (siehe KMP_PLAN.md, Phase 1).
+kotlin = "2.4.10"
+composeMultiplatform = "1.12.0"
+composeHotReload = "1.2.0"
+# Multiplattform-Lifecycle (org.jetbrains.androidx), nicht die androidx-Variante der Android-App.
+androidx-lifecycle = "2.11.0"
 kotlinx-coroutines = "1.10.2"
-uiAndroid = "1.10.2"
-animationDesktop = "1.7.0"
+# Android-Seite: exakt die Versionen aus dem Katalog der Android-App.
+agp = "9.3.2"
+androidx-activityCompose = "1.13.0"
+ksp = "2.3.11"
+room = "2.8.4"
+sqlite = "2.6.2"
+android-compileSdk = "37"
+android-minSdk = "29"
+android-targetSdk = "36"
+kotlinx-serialization = "1.11.0"
+junit = "4.13.2"
+pdfbox = "2.0.30"
+jna = "5.13.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -15,11 +27,23 @@ junit = { module = "junit:junit", version.ref = "junit" }
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-androidx-ui-android = { group = "androidx.compose.ui", name = "ui-android", version.ref = "uiAndroid" }
-androidx-animation-desktop = { group = "androidx.compose.animation", name = "animation-desktop", version.ref = "animationDesktop" }
+kotlinx-serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 
 [plugins]
 composeHotReload = { id = "org.jetbrains.compose.hot-reload", version.ref = "composeHotReload" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+# Ab AGP 9 ist com.android.library nicht mehr mit dem KMP-Plugin kombinierbar.
+androidKotlinMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }

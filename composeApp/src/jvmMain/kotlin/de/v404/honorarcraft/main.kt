@@ -1,7 +1,7 @@
-package app.accounting.accountingapp
+package de.v404.honorarcraft
 
-import accountingapp.composeapp.generated.resources.Res
-import accountingapp.composeapp.generated.resources.iconWindows
+import de.v404.honorarcraft.resources.Res
+import de.v404.honorarcraft.resources.iconWindows
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background

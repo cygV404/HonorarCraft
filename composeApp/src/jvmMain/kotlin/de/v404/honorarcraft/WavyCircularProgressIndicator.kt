@@ -1,4 +1,4 @@
-package app.accounting.accountingapp
+package de.v404.honorarcraft
 
 
 import androidx.compose.animation.core.*

@@ -1,4 +1,4 @@
-package app.accounting.accountingapp
+package de.v404.honorarcraft
 
 import kotlinx.serialization.Serializable
 import kotlin.random.Random

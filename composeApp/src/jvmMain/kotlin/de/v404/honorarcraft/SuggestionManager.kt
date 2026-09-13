@@ -1,4 +1,4 @@
-package app.accounting.accountingapp
+package de.v404.honorarcraft
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
