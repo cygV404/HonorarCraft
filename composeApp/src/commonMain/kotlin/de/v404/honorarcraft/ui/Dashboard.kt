@@ -259,6 +259,7 @@ fun DashboardContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .inhaltsbreite()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,

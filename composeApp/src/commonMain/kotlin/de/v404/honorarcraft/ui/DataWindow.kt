@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -368,7 +369,10 @@ fun DataWindowContent(
             .imePadding()
             .background(MaterialTheme.colorScheme.background)) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .inhaltsbreite()
+                    .align(Alignment.TopCenter),
                 contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {

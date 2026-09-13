@@ -316,7 +316,10 @@ fun EntryWindowContent(
                 }
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .inhaltsbreite()
+                        .align(Alignment.CenterHorizontally),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {

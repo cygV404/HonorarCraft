@@ -67,6 +67,38 @@ val DarkSurfaceVariant = Color(0xFF3F4949)
 val DarkOnSurfaceVariant = Color(0xFFBEC8C8)
 val DarkOutline = Color(0xFF899393)
 
+// --- Flächen -----------------------------------------------------------------------
+// Material 3 kennt eine ganze Reihe abgestufter Flächenfarben (surfaceContainer*), die
+// Karten und erhöhte Elemente benutzen. Werden sie nicht gesetzt, füllt Material sie aus
+// seiner **lila Grundpalette** — daher der rosa Schimmer auf den Karten. Die Töne hier sind
+// neutrale Grautöne mit einem Hauch Türkis, passend zu den Markenfarben.
+
+val LightSurfaceDim = Color(0xFFD5DBDB)
+val LightSurfaceBright = Color(0xFFF5FAFA)
+val LightSurfaceContainerLowest = Color(0xFFFFFFFF)
+val LightSurfaceContainerLow = Color(0xFFEFF5F5)
+val LightSurfaceContainer = Color(0xFFE9EFEF)
+val LightSurfaceContainerHigh = Color(0xFFE4EAEA)
+val LightSurfaceContainerHighest = Color(0xFFDEE4E4)
+val LightOutlineVariant = Color(0xFFBEC8C8)
+val LightInverseSurface = Color(0xFF2D3131)
+val LightInverseOnSurface = Color(0xFFEFF1F1)
+val LightInversePrimary = Color(0xFF4DDBDC)
+
+val DarkSurfaceDim = Color(0xFF101414)
+val DarkSurfaceBright = Color(0xFF363A3A)
+val DarkSurfaceContainerLowest = Color(0xFF0B0F0F)
+val DarkSurfaceContainerLow = Color(0xFF191C1C)
+val DarkSurfaceContainer = Color(0xFF1D2020)
+val DarkSurfaceContainerHigh = Color(0xFF272B2B)
+val DarkSurfaceContainerHighest = Color(0xFF323535)
+val DarkOutlineVariant = Color(0xFF3F4949)
+val DarkInverseSurface = Color(0xFFE0E3E3)
+val DarkInverseOnSurface = Color(0xFF2D3131)
+val DarkInversePrimary = Color(0xFF00696B)
+
+val Scrim = Color(0xFF000000)
+
 // --- Fehlerfarben ------------------------------------------------------------------
 
 val LightError = Color(0xFFBA1A1A)
