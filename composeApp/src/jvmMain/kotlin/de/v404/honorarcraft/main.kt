@@ -5,8 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import de.v404.honorarcraft.resources.Res
 import de.v404.honorarcraft.resources.iconWindows
 import de.v404.honorarcraft.ui.HonorarCraftApp
@@ -22,6 +25,9 @@ fun main() = application {
         icon = painterResource(Res.drawable.iconWindows),
         onCloseRequest = ::exitApplication,
         title = "HonorarCraft",
+        // Startgröße oberhalb der 900-dp-Grenze, sonst öffnet der Desktop in der
+        // Handy-Ansicht mit Leiste unten statt mit der Seitenleiste.
+        state = rememberWindowState(size = DpSize(1200.dp, 820.dp)),
     ) {
         // Deutlich kleiner als die früheren 1440x900: darunter passte die App auf kein
         // kleineres Notebook. Die Seitenleiste erscheint ab 900 dp Breite, darunter greift
