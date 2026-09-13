@@ -1,0 +1,17 @@
+package de.v404.honorarcraftandroid
+
+import androidx.room.TypeConverter
+import java.math.BigDecimal
+
+class Converters {
+    @TypeConverter
+    fun fromBigDecimal(value: BigDecimal?): String? {
+        return value?.toString()
+    }
+
+    @TypeConverter
+    fun toBigDecimal(value: String?): BigDecimal? {
+        if (value.isNullOrBlank()) return null
+        return value.replace(",", ".").toBigDecimalOrNull()
+    }
+}
