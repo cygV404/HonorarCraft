@@ -69,14 +69,15 @@ private val LightColorScheme = lightColorScheme(
 expect fun dynamicColorSchemeOrNull(darkTheme: Boolean): ColorScheme?
 
 /**
- * @param dynamicColor Standardmäßig **aus**. Androids dynamische Farben würden das
- *   Markenschema vollständig überschreiben und die App auf jedem Gerät anders aussehen
- *   lassen — genau das soll das Branding verhindern.
+ * @param dynamicColor Standardmäßig **an**. Auf Android ab 12 leitet Material 3 die Farben aus
+ *   dem Hintergrundbild ab; die App fügt sich damit ins System ein. Das Markenschema unten
+ *   greift dort nur, wenn das Gerät keine dynamischen Farben liefert — auf dem Desktop also
+ *   immer, weil es dort nichts Vergleichbares gibt.
  */
 @Composable
 fun HonorarCraftTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val dynamic = if (dynamicColor) dynamicColorSchemeOrNull(darkTheme) else null

@@ -297,9 +297,9 @@ Abgeschlossen. Gewählte Versionen:
       stehen die Markenfarben unverändert, so wie das Icon auf dem schwarzen Startbildschirm;
       im Hellmodus wären sie unlesbar (Cyan auf Weiß), dort werden dunkle Töne derselben
       Farbtöne verwendet und die hellen Originale tauchen als Container-Farben wieder auf.
-      **`dynamicColor` ist jetzt standardmäßig aus** — Androids dynamische Farben hätten das
-      Markenschema auf jedem Gerät überschrieben, also genau das verhindert, wofür das
-      Branding da ist.
+      **`dynamicColor` bleibt standardmäßig an.** Auf Android ab 12 gewinnen damit weiterhin
+      die dynamischen Farben aus dem Hintergrundbild — so wie bisher. Das Markenschema greift
+      dort, wo das Gerät keine liefert, und auf dem Desktop immer.
 - [x] `values-night`-Farben und die Launcher-Ressourcen sind nach `androidApp/src/main/res/`
       umgezogen; das Manifest verweist jetzt auf `@mipmap/ic_launcher`, `@string/app_name`
       und `@style/Theme.HonorarCraftAndroid`.
