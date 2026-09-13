@@ -271,11 +271,19 @@ fun EntryWindowContent(
             )
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            // Die Begrenzung sitzt um den **ganzen** Block, nicht nur um die Liste: sonst
+            // bleibt die Summenkarte oben so breit wie das Fenster, während die Einträge
+            // darunter schon schmaler sind.
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
+                    .inhaltsbreite()
+                    .fillMaxHeight()
                     .padding(horizontal = 16.dp)
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
@@ -317,10 +325,7 @@ fun EntryWindowContent(
                 }
 
                 LazyColumn(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .inhaltsbreite()
-                        .fillMaxHeight(),
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {

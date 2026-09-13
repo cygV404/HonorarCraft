@@ -364,13 +364,15 @@ fun DataWindowContent(
             }
         )
 
-        Box(modifier = Modifier
-            .weight(1f)
-            .imePadding()
-            .background(MaterialTheme.colorScheme.background)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .imePadding()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.TopCenter,
+        ) {
             LazyColumn(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
                     .inhaltsbreite()
                     .fillMaxHeight(),
                 contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
