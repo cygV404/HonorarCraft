@@ -1,17 +1,23 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.shared
 
-import android.app.Application
-import android.content.Context
-import android.net.Uri
-import android.util.Log
-import android.widget.Toast
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
+import de.v404.honorarcraft.shared.data.AppDatabase
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.HiddenSubject
+import de.v404.honorarcraft.shared.data.InvoiceData
+import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceFormat
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.data.formatInvoice
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +27,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
@@ -31,18 +36,34 @@ import java.util.Locale
 
 private const val TAG = "MainViewModel"
 
-enum class InvoiceFormat {
-    NUMBER,
-    YEAR_NUMBER,
-    YEAR_MONTH_NUMBER
-}
-
+/**
+ * Gemeinsamer Zustand für Android und Desktop.
+ *
+ * Datenbank und Einstellungsspeicher werden hereingereicht, statt sie aus einem
+ * Application-Objekt zu ziehen — nur so ist das ViewModel plattformunabhängig und im Test
+ * ohne Emulator benutzbar. Alles, was eine echte Plattform braucht (PDF-Erzeugung, Backup
+ * über Datei-Dialoge), bleibt bewusst draußen; die Oberfläche ruft danach
+ * [incrementInvoiceNumber] bzw. die plattformeigene Backup-Schicht auf.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = AppDatabase.getDatabase(application)
+class MainViewModel(
+    private val database: AppDatabase,
+    private val settings: Settings,
+) : ViewModel() {
     private val invoiceDao = database.invoiceDao()
     private val companyDao = database.companyDao()
-    private val sharedPrefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val maintenanceDao = database.maintenanceDao()
+
+    /**
+     * Kurze Rückmeldungen an den Nutzer. Ersetzt die Toast-Aufrufe: welches Bauteil daraus
+     * wird (Toast, Snackbar), entscheidet die jeweilige Oberfläche.
+     */
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    private fun notifyUser(text: String) {
+        _messages.tryEmit(text)
+    }
 
     // Loading State
     private val _isLoading = MutableStateFlow(false)
@@ -68,25 +89,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Selection for Year and Invoice (for Invoice Number generation)
     private val _invoiceYear = MutableStateFlow(
-        sharedPrefs.getInt("invoice_year", Calendar.getInstance().get(Calendar.YEAR))
+        settings.getInt(SettingsKeys.INVOICE_YEAR, Calendar.getInstance().get(Calendar.YEAR))
     )
     val invoiceYear: StateFlow<Int> = _invoiceYear.asStateFlow()
 
     private val _invoiceMonth = MutableStateFlow(
-        sharedPrefs.getInt("invoice_month", Calendar.getInstance().get(Calendar.MONTH) + 1)
+        settings.getInt(SettingsKeys.INVOICE_MONTH, Calendar.getInstance().get(Calendar.MONTH) + 1)
     )
     val invoiceMonth: StateFlow<Int> = _invoiceMonth.asStateFlow()
 
     private val _selectedInvoiceNumber = MutableStateFlow(
-        sharedPrefs.getString("selected_invoice_number", "1") ?: "1"
+        settings.getString(SettingsKeys.SELECTED_INVOICE_NUMBER, "1")
     )
     val selectedInvoiceNumber: StateFlow<String> = _selectedInvoiceNumber.asStateFlow()
 
     private val _invoiceFormat = MutableStateFlow(
         runCatching {
             InvoiceFormat.valueOf(
-                sharedPrefs.getString("invoice_format", InvoiceFormat.NUMBER.name)
-                    ?: InvoiceFormat.NUMBER.name
+                settings.getString(SettingsKeys.INVOICE_FORMAT, InvoiceFormat.NUMBER.name)
             )
         }.getOrDefault(InvoiceFormat.NUMBER)
     )
@@ -213,12 +233,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setInvoiceYear(year: Int) {
         _invoiceYear.value = year
-        sharedPrefs.edit().putInt("invoice_year", year).apply()
+        settings.putInt(SettingsKeys.INVOICE_YEAR, year)
     }
 
     fun setInvoiceMonth(month: Int) {
         _invoiceMonth.value = month
-        sharedPrefs.edit().putInt("invoice_month", month).apply()
+        settings.putInt(SettingsKeys.INVOICE_MONTH, month)
     }
 
     fun setSelectedInvoiceNumber(number: String) {
@@ -253,7 +273,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _selectedInvoiceNumber.value = formatted
         }
         
-        sharedPrefs.edit().putString("selected_invoice_number", _selectedInvoiceNumber.value).apply()
+        settings.putString(SettingsKeys.SELECTED_INVOICE_NUMBER, _selectedInvoiceNumber.value)
         
         // Reset confirmation card to avoid "ghost" entries from previous invoice
         _lastAddedEntry.value = null
@@ -262,7 +282,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setInvoiceFormat(format: InvoiceFormat) {
         _invoiceFormat.value = format
-        sharedPrefs.edit().putString("invoice_format", format.name).apply()
+        settings.putString(SettingsKeys.INVOICE_FORMAT, format.name)
     }
 
     fun incrementInvoiceNumber() {
@@ -313,7 +333,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val hours = stunden.replace(",", ".").toBigDecimalOrNull()
 
         if (hours == null) {
-            Toast.makeText(getApplication(), "Ungültige Stundenzahl", Toast.LENGTH_SHORT).show()
+            notifyUser("Ungültige Stundenzahl")
             return
         }
 
@@ -371,10 +391,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                withContext(Dispatchers.IO) {
-                    database.clearAllTables()
-                    sharedPrefs.edit().clear().commit()
-                }
+                // Kein withContext(Dispatchers.IO): Room führt seine suspend-Abfragen
+                // ohnehin auf dem Abfrage-Kontext der Datenbank aus.
+                maintenanceDao.clearAllTables()
+                settings.clear()
 
                 // Reset StateFlows to default values
                 val now = Calendar.getInstance()
@@ -387,10 +407,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _hasUnsavedChanges.value = false
                 _resetDataWindowTrigger.value += 1
             } catch (e: Exception) {
-                Log.e(TAG, "Zurücksetzen fehlgeschlagen", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(getApplication(), "Fehler beim Zurücksetzen: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                logError(TAG, "Zurücksetzen fehlgeschlagen", e)
+                notifyUser("Fehler beim Zurücksetzen: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
@@ -401,112 +419,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                withContext(Dispatchers.IO) {
-                    companyDao.insertCompanyData(CompanyData(id = 1, rate = Constants.DEFAULT_RATE))
-                }
+                companyDao.insertCompanyData(CompanyData(id = 1, rate = Constants.DEFAULT_RATE))
                 _hasUnsavedChanges.value = false
                 _resetDataWindowTrigger.value += 1
             } catch (e: Exception) {
-                Log.e(TAG, "Zurücksetzen fehlgeschlagen", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(getApplication(), "Fehler beim Zurücksetzen: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                logError(TAG, "Zurücksetzen fehlgeschlagen", e)
+                notifyUser("Fehler beim Zurücksetzen: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    /** Schreibt die Datenbank in die vom Nutzer gewaehlte Datei. */
-    fun exportData(uri: Uri) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val ergebnis = Backup.export(getApplication(), uri)
-            _isLoading.value = false
-            ergebnis.onSuccess {
-                Toast.makeText(getApplication(), "Sicherung gespeichert", Toast.LENGTH_LONG).show()
-            }.onFailure {
-                Toast.makeText(
-                    getApplication(),
-                    "Sicherung fehlgeschlagen: ${it.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-    }
-
     /**
-     * Ersetzt die Datenbank durch eine Sicherung und startet die App neu.
-     *
-     * Der Neustart ist nicht Bequemlichkeit, sondern notwendig: saemtliche
-     * StateFlows haengen an der Room-Verbindung, die der Import schliesst. Ein
-     * Weiterlaufen ohne Neustart wuerde leere oder veraltete Listen zeigen.
+     * Rückmeldung aus der plattformeigenen Schicht (PDF-Erzeugung, Backup) in denselben
+     * Kanal wie die Meldungen des ViewModels.
      */
-    fun importData(uri: Uri, onRestart: () -> Unit) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val ergebnis = Backup.import(getApplication(), uri)
-            _isLoading.value = false
-            ergebnis.onSuccess {
-                Toast.makeText(
-                    getApplication(),
-                    "Sicherung eingelesen – App wird neu gestartet",
-                    Toast.LENGTH_LONG
-                ).show()
-                onRestart()
-            }.onFailure { fehler ->
-                Toast.makeText(
-                    getApplication(),
-                    fehler.message ?: "Import fehlgeschlagen",
-                    Toast.LENGTH_LONG
-                ).show()
-                // Scheiterte der Tausch erst nach dem Schliessen der Verbindung,
-                // sind die Daten zwar heil, die laufende App aber nicht mehr
-                // benutzbar - also ebenfalls neu starten.
-                if (fehler is NeustartNoetigException) onRestart()
-            }
-        }
-    }
-
-    fun generatePdf(context: Context, companyData: CompanyData, invoiceWithEntries: InvoiceWithEntries) {
-        viewModelScope.launch {
-            setLoading(true)
-            try {
-                val formattedNumber = formattedInvoiceNumber.value
-                val success =
-                    createInvoicePdf(context, invoiceWithEntries, companyData, formattedNumber)
-                if (success) {
-                    incrementInvoiceNumber()
-                }
-            } catch (t: Throwable) {
-                // Fängt bewusst auch Error (z. B. OutOfMemoryError beim Zeichnen):
-                // eine ungefangene Exception in viewModelScope beendet sonst den Prozess.
-                Log.e(TAG, "PDF-Erzeugung fehlgeschlagen", t)
-                Toast.makeText(
-                    getApplication(),
-                    "PDF konnte nicht erstellt werden",
-                    Toast.LENGTH_LONG
-                ).show()
-            } finally {
-                setLoading(false)
-            }
-        }
-    }
-}
-
-fun formatInvoice(number: String, format: InvoiceFormat, year: Int, month: Int): String {
-    val numInt = number.toIntOrNull()
-    val displayNum = if (numInt != null) String.format(Locale.GERMANY, "%02d", numInt) else number
-    
-    return when (format) {
-        InvoiceFormat.NUMBER -> displayNum
-        InvoiceFormat.YEAR_NUMBER -> "$year-$displayNum"
-        InvoiceFormat.YEAR_MONTH_NUMBER -> String.format(
-            Locale.GERMANY,
-            "%d-%02d-%02d",
-            year,
-            month,
-            numInt ?: 0
-        )
-    }
+    fun showMessage(text: String) = notifyUser(text)
 }

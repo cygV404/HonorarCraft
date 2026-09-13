@@ -195,15 +195,44 @@ Abgeschlossen. Gewählte Versionen:
 - [x] `InvoiceFormat` und `formatInvoice` aus `MainViewModel.kt` herausgelöst nach
       `shared/.../data/InvoiceNumber.kt` — der `CalculationTest` braucht sie, und sie hingen
       nur zufällig im ViewModel.
-- [ ] Rechenlogik (`totalSum`, `totalLessonUnit`), `InvoiceFormat`/`formatInvoice`,
-      `Constants` nach `commonMain`. Die Desktop-Varianten (`totalCostsHours` &
-      `totalCostsLessonUnits` mit der vertauschten Benennung) ersatzlos streichen.
-- [ ] `MainViewModel` nach `commonMain` (`androidx.lifecycle.ViewModel` ist multiplatform-fähig);
-      `SharedPreferences` durch eine `expect/actual`-Einstellungsschicht ersetzen
-      (Android: SharedPreferences, Desktop: `java.util.prefs` oder eine Settings-Tabelle in Room).
-- [ ] Jahresumsatz nur noch aus den Positionen ableiten (`date.endsWith(jahr)`), die
-      `totals/year_*.json` entfallen — behebt die Doppelzählung über den Jahreswechsel.
-- [ ] Abnahme: alle Tests grün, Desktop zeigt für dieselben Daten dieselben Summen wie das Handy.
+- [x] Rechenlogik (`totalSum`, `totalLessonUnit`), `InvoiceFormat`/`formatInvoice` und
+      `Constants` liegen in `:shared`.
+- [ ] **Offen:** Die Desktop-Varianten `totalCostsHours` / `totalCostsLessonUnits` mit der
+      vertauschten Benennung streichen. Geht erst, wenn die Desktop-Oberfläche auf die
+      gemeinsame Logik umgestellt ist — bis dahin hängt die laufende App daran.
+- [x] `MainViewModel` liegt in `shared/src/jvmCommonMain`. Es erbt jetzt von
+      `androidx.lifecycle.ViewModel` statt von `AndroidViewModel`; **Datenbank und
+      Einstellungsspeicher werden hereingereicht**, statt aus einem `Application`-Objekt
+      gezogen zu werden. Damit läuft es im Test ohne Emulator.
+      - `SharedPreferences` ist durch das Interface `Settings` ersetzt. Kein `expect/actual`,
+        sondern eine normale Schnittstelle mit drei Implementierungen: `AndroidSettings`
+        (SharedPreferences, Dateiname "settings" unverändert — sonst verliert ein bestehendes
+        Gerät seine Rechnungsnummer), `PreferencesSettings` (`java.util.prefs`, eigener Knoten
+        neben dem alten AES-Knoten) und `InMemorySettings` für Tests.
+      - `Toast` ist einem `SharedFlow<String>` namens `messages` gewichen; ob daraus ein Toast
+        oder eine Snackbar wird, entscheidet die Oberfläche. `showMessage` steht der
+        plattformeigenen Schicht offen.
+      - `Log.e` ist ein `expect fun logError` (Android: Logcat, Desktop: stderr).
+      - `exportData`, `importData` und `generatePdf` sind **nicht** mitgekommen — sie hängen an
+        `Uri`, `Backup` und `createInvoicePdf` und gehören nach Phase 6. Die Oberfläche ruft
+        danach `incrementInvoiceNumber()` bzw. `showMessage(...)` auf.
+      - `clearAllTables()` gibt es in Room-KMP nicht; dafür gibt es jetzt einen
+        `MaintenanceDao` mit expliziten Löschabfragen in einer Transaktion.
+      - Die `withContext(Dispatchers.IO)`-Klammern um die Room-Aufrufe sind raus: Room führt
+        seine suspend-Abfragen ohnehin auf dem Abfrage-Kontext aus. Sie waren doppelt gemoppelt
+        und haben den Ablauf untestbar gemacht.
+      - `createDesktopDatabase` nimmt den Abfrage-Kontext jetzt als Parameter (Vorgabe
+        `Dispatchers.IO`), damit Tests ihren Test-Dispatcher hereinreichen können.
+- [x] Jahresumsatz wird im gemeinsamen ViewModel nur noch aus den Positionen abgeleitet
+      (`date.endsWith(jahr)`). Die `totals/year_*.json` des Desktops entfallen mit dem
+      Importer — die Doppelzählung über den Jahreswechsel ist damit erledigt.
+- [x] `MainViewModelTest` (7 Tests) deckt die verzwickte Zerlegung der Rechnungsnummer ab,
+      das Hochzählen, den Honorarsatz aus den Firmendaten, das Trimmen der Eingaben, die
+      Meldung bei ungültiger Stundenzahl und das Zurücksetzen.
+- [x] Abnahme (Teil 1): 25 Tests grün — 14 Rechen-Tests auf beiden Plattformen, 4 Datenbank-
+      und 7 ViewModel-Tests auf dem Desktop.
+- [ ] Abnahme (Teil 2): Desktop zeigt für dieselben Daten dieselben Summen wie das Handy —
+      steht noch aus, weil die Desktop-Oberfläche die gemeinsame Schicht noch nicht nutzt.
 
 ## Phase 4 — Assets und Theme übernehmen
 

@@ -75,6 +75,36 @@ interface CompanyDao {
 }
 
 /**
+ * Löschen aller Nutzdaten für das Zurücksetzen auf Werkseinstellungen.
+ *
+ * Room-KMP kennt kein `clearAllTables()`; die Tabellen werden deshalb einzeln geleert.
+ * Die Reihenfolge ist nicht beliebig: die Positionen hängen per Fremdschlüssel an den
+ * Rechnungen und müssen zuerst weg.
+ */
+@Dao
+interface MaintenanceDao {
+    @Query("DELETE FROM invoice_entries")
+    suspend fun deleteAllEntries()
+
+    @Query("DELETE FROM invoices")
+    suspend fun deleteAllInvoices()
+
+    @Query("DELETE FROM hidden_subjects")
+    suspend fun deleteAllHiddenSubjects()
+
+    @Query("DELETE FROM company_data")
+    suspend fun deleteAllCompanyData()
+
+    @Transaction
+    suspend fun clearAllTables() {
+        deleteAllEntries()
+        deleteAllInvoices()
+        deleteAllHiddenSubjects()
+        deleteAllCompanyData()
+    }
+}
+
+/**
  * Aktuelle Schemaversion. Einzige Quelle der Wahrheit – [Backup] prueft eingelesene
  * Sicherungen dagegen, damit eine Datei aus einer neueren App-Version nicht zu
  * einem Absturz beim Start fuehrt.
@@ -96,6 +126,7 @@ const val DATABASE_VERSION = 11
 abstract class AppDatabase : RoomDatabase() {
     abstract fun invoiceDao(): InvoiceDao
     abstract fun companyDao(): CompanyDao
+    abstract fun maintenanceDao(): MaintenanceDao
 }
 
 /**

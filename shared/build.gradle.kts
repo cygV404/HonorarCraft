@@ -33,6 +33,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.serializationJson)
             implementation(libs.kotlinx.coroutinesCore)
+            api(libs.androidx.lifecycle.viewmodel)
             api(libs.androidx.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
         }

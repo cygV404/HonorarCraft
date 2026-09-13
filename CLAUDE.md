@@ -96,6 +96,26 @@ ein fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
 Die Desktop-App nutzt diese Datenschicht **noch nicht** — sie liegt weiterhin auf JSON
 (siehe unten). Der Umstieg samt Importer steht in `KMP_PLAN.md`.
 
+### Gemeinsames ViewModel
+
+`shared/.../MainViewModel.kt` hält den Zustand für beide Plattformen. Datenbank und
+`Settings` werden hereingereicht, nicht aus einem `Application`-Objekt gezogen — deshalb
+läuft es im Test ohne Emulator. Was daraus folgt:
+
+- `Settings` ist eine gewöhnliche Schnittstelle, kein `expect/actual`: `AndroidSettings`
+  (SharedPreferences, Dateiname "settings" — unverändert, sonst verlieren bestehende Geräte
+  ihre Rechnungsnummer), `PreferencesSettings` (`java.util.prefs`) und `InMemorySettings`.
+- Nutzermeldungen laufen über den `SharedFlow<String>` `messages` statt über `Toast`; die
+  Oberfläche entscheidet, ob daraus ein Toast oder eine Snackbar wird. Der Flow hat **kein**
+  Replay — ein Sammler muss stehen, bevor gemeldet wird.
+- Fehler gehen über `expect fun logError` (Android: Logcat, Desktop: stderr).
+- PDF-Erzeugung und Backup sind bewusst **nicht** im ViewModel; sie bleiben plattformeigen
+  und rufen danach `incrementInvoiceNumber()` bzw. `showMessage(...)`.
+- Um Room-Aufrufe gehört **kein** `withContext(Dispatchers.IO)` — Room legt suspend-Abfragen
+  selbst auf den Abfrage-Kontext der Datenbank. Tests reichen diesen Kontext über
+  `createDesktopDatabase(path, queryContext)` herein, sonst laufen die Abfragen an der
+  Testuhr vorbei.
+
 ### Navigation
 
 `main.kt` öffnet ein einziges `Window` und wechselt die Screens über einen `String`-State innerhalb eines
