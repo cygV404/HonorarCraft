@@ -344,8 +344,21 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
       Adressblock), zwei Renderer (PDFBox / `PdfDocument`). Ziel: beide Plattformen erzeugen
       dasselbe Dokument.
 - [ ] Datei-Dialoge: `JFileChooser` (Desktop) vs. Storage Access Framework (Android).
-- [ ] Backup/Restore aus `Backup.kt` auf den Desktop ziehen (Dateiauswahl plattformabhängig,
-      WAL-Checkpoint und Prüflogik gemeinsam).
+- [x] Backup/Restore liegt in `shared/.../backup/Backup.kt` und gilt für beide Plattformen.
+      Da Android und Desktop beide JVM sind, brauchte es **keine** `Uri`-Abstraktion: die
+      gemeinsame Schicht nimmt fertige `InputStream`/`OutputStream` entgegen, die Auswahl der
+      Datei bleibt plattformeigen.
+      - Die Prüfung öffnet die Kandidatendatei jetzt über `BundledSQLiteDriver` statt über
+        Androids `SQLiteDatabase` — dieselben Regeln auf beiden Seiten, damit eine Sicherung
+        vom Handy auf dem Desktop gleich beurteilt wird. Schemaversion kommt über
+        `PRAGMA user_version`.
+      - Der WAL-Checkpoint läuft über `database.useWriterConnection { usePrepared(...) }`;
+        `execSQL` reicht nicht, weil `PRAGMA wal_checkpoint` eine Zeile zurückliefert.
+      - `AppDatabase.getDatabase(context)` und `context.cacheDir` sind zu Parametern geworden
+        (`databaseFile`, `workDir`, `closeDatabase`).
+- [x] `BackupTest` (4 Tests) prüft den Rundlauf und vor allem die beiden Abweisungen: eine
+      Textdatei und eine echte, aber fremde SQLite-Datenbank werden zurückgewiesen, **bevor**
+      irgendetwas angefasst wird — die vorhandenen Rechnungen bleiben in beiden Fällen stehen.
 - [ ] Verschlüsselung klären (Frage 7).
 - [ ] CI erst ganz am Schluss wieder scharf schalten, dann mit Android-Build + `ubuntu-latest`
       in der Matrix.
