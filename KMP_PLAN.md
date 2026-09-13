@@ -11,11 +11,20 @@ Stand: 13.09.2026. Phase 0 und Phase 1 sind erledigt, gearbeitet wird auf dem Br
 3. **Room auch auf dem Desktop.** Fällt der Spike durch, SQLite über JDBC hinter demselben
    Repository-Interface — nicht bei JSON bleiben.
 5. **Eine gemeinsame, adaptive Oberfläche** (Breiten-Abfrage statt zweier Implementierungen).
+7. **Keine Feldverschlüsselung.** Die Daten liegen unverschlüsselt in der Room-Datenbank —
+   auf beiden Plattformen gleich. Der AES-`CryptoHelper` der alten Desktop-Fassung wird nur
+   noch vom Importer gebraucht, um den Altbestand einmalig zu entschlüsseln
+   (`LegacyVaultCrypto`); danach hat er keine Aufgabe mehr.
+   Was das heißt: Auf dem Desktop lagen Name, Anschrift, IBAN, BIC und Steuernummer bisher
+   AES-verschlüsselt in `company.json`; künftig stehen sie im Klartext in der
+   Datenbankdatei. Android verhält sich damit unverändert (dort schützt `allowBackup="false"`
+   vor dem Google-Backup, verschlüsselt wurde dort noch nie).
 8. **iOS bleibt außen vor.** Kein iOS-Target, auch nicht vorbereitend in der Struktur.
    Damit ist die Nutzung von JVM-APIs im gemeinsamen Code (`jvmCommonMain`, `java.math.BigDecimal`)
    eine dauerhafte Entscheidung und keine Notlösung mehr.
 
-Offen bleiben die Fragen 4, 6 und 7 am Ende dieser Datei.
+Offen bleibt nur noch Frage 6 am Ende dieser Datei (Honorarsatz je Position und
+Rechnungsnummern-Format auch auf dem Desktop - das ändert das Desktop-PDF).
 
 ## Ausgangslage
 
@@ -326,10 +335,18 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
         Release mitgepflegt werden muss** — neben `packageVersion` und `versionName`.
 - [ ] `EntryWindow.kt` (513 Zeilen) — braucht nur den Ersatz von `Toast` und einen Haken für
       die PDF-Erzeugung.
-- [ ] `DataWindow.kt` (729 Zeilen) — der harte Brocken: Datei-Auswahl über
-      `ActivityResultContracts`, `Intent`, `BitmapFactory` für die Unterschriftsvorschau,
-      `Uri` für Sicherungen. Hängt an Phase 6 (Datei-Dialoge, Backup) und kann erst danach
-      vollständig umziehen.
+- [x] `DataWindow.kt` liegt in `commonMain`. Möglich wurde das erst durch die
+      Plattformschicht aus Phase 6; `Uri`, `Intent`, `BitmapFactory` und die
+      Activity-Launcher sind restlos verschwunden.
+      **Eine Verhaltensänderung:** Beim Einlesen einer Sicherung kam früher erst die
+      Dateiauswahl und danach die Rückfrage. Die gemeinsame Plattformschicht erledigt Auswahl
+      und Einlesen in einem Schritt, deshalb steht die Rückfrage jetzt davor. Abbrechen geht
+      weiterhin auch noch im Dateidialog, und die Warnung („ersetzt alles, App startet neu")
+      gilt unabhängig von der gewählten Datei.
+      Die Unterschrift wird nicht mehr in `DataWindow` selbst kopiert — das erledigt
+      `PlatformServices.pickSignatureImage()`, und der Screen bekommt nur noch den fertigen
+      Pfad. Damit ist auch der Toast bei Kopierfehlern weg; Meldungen laufen über
+      `MainViewModel.showMessage`.
 - [ ] Der adaptive Rahmen (`HonorarCraftApp`) mit Seitenleiste ab ca. 900 dp und Pager
       darunter. Braucht alle vier Screens.
 - [ ] Desktop-Navigation (`String`-State in `main.kt`) durch dieselbe Tab-/Pager-Logik wie
@@ -380,7 +397,8 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 - [x] `BackupTest` (4 Tests) prüft den Rundlauf und vor allem die beiden Abweisungen: eine
       Textdatei und eine echte, aber fremde SQLite-Datenbank werden zurückgewiesen, **bevor**
       irgendetwas angefasst wird — die vorhandenen Rechnungen bleiben in beiden Fällen stehen.
-- [ ] Verschlüsselung klären (Frage 7).
+- [x] Verschlüsselung geklärt: fällt weg (Entscheidung 7). `LegacyVaultCrypto` bleibt allein
+      für den einmaligen Import bestehen.
 - [ ] CI erst ganz am Schluss wieder scharf schalten, dann mit Android-Build + `ubuntu-latest`
       in der Matrix.
 
@@ -397,8 +415,5 @@ die darf sich nie ändern, sonst ist es für den Store eine neue App. Der `names
 in die Room-Datenbank, der Altbestand wird danach umbenannt statt gelöscht.
 6. **Honorarsatz pro Position** und die **Rechnungsnummern-Formate** aus der Android-App auch
    auf dem Desktop — heißt: das Desktop-PDF ändert sich. Einverstanden?
-7. **Verschlüsselung:** Desktop verschlüsselt IBAN/Steuernummer/Name mit AES im
-   `CryptoHelper`, Android verlässt sich auf `allowBackup="false"`. Gemeinsam gelöst wird das
-   entweder gar nicht mehr (Feldverschlüsselung fällt weg) oder für beide (z. B. SQLCipher).
-   Was ist dir lieber?
+~~7.~~ — beantwortet: keine Feldverschlüsselung, siehe "Getroffene Entscheidungen" oben.
 ~~8.~~ — beantwortet: iOS bleibt außen vor, siehe "Getroffene Entscheidungen" oben.

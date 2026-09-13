@@ -1,13 +1,5 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.ui
 
-import android.content.Context
-import android.content.Intent
-import android.graphics.BitmapFactory
-import android.net.Uri
-import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,19 +53,24 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import de.v404.honorarcraftandroid.ui.theme.HonorarCraftAndroidTheme
+import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
+import de.v404.honorarcraft.shared.MainViewModel
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.backup.Backup
+import de.v404.honorarcraft.shared.backup.NeustartNoetigException
+import de.v404.honorarcraft.ui.platform.LocalPlatformServices
+import de.v404.honorarcraft.ui.platform.loadImageFromFile
+import androidx.compose.runtime.produceState
 
 @Composable
 fun DataWindowScreen(
@@ -81,7 +78,8 @@ fun DataWindowScreen(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    val context = LocalContext.current
+    val platform = LocalPlatformServices.current
+    val scope = rememberCoroutineScope()
     val savedData by mainViewModel.companyData.collectAsState()
     val isLoading by mainViewModel.isLoading.collectAsState()
     val resetTrigger by mainViewModel.resetDataWindowTrigger.collectAsState()
@@ -94,9 +92,51 @@ fun DataWindowScreen(
         onResetAll = { mainViewModel.resetAllData() },
         onResetCompanyOnly = { mainViewModel.resetCompanyData() },
         onChanged = { mainViewModel.setHasUnsavedChanges(true) },
-        onExport = { uri -> mainViewModel.exportData(uri) },
-        onImport = { uri ->
-            mainViewModel.importData(uri) { starteAppNeu(context) }
+        onExport = {
+            scope.launch {
+                mainViewModel.setLoading(true)
+                val ergebnis = platform.exportBackup()
+                mainViewModel.setLoading(false)
+                when {
+                    // null heisst: der Nutzer hat den Dateidialog abgebrochen.
+                    ergebnis == null -> Unit
+                    ergebnis.isSuccess -> mainViewModel.showMessage("Sicherung gespeichert")
+                    else -> mainViewModel.showMessage(
+                        "Sicherung fehlgeschlagen: " + ergebnis.exceptionOrNull()?.message
+                    )
+                }
+            }
+        },
+        onImport = {
+            scope.launch {
+                mainViewModel.setLoading(true)
+                val ergebnis = platform.importBackup()
+                mainViewModel.setLoading(false)
+                when {
+                    ergebnis == null -> Unit
+                    ergebnis.isSuccess -> {
+                        mainViewModel.showMessage("Sicherung eingelesen – die App startet neu")
+                        platform.restartApp()
+                    }
+                    else -> {
+                        val fehler = ergebnis.exceptionOrNull()
+                        mainViewModel.showMessage(fehler?.message ?: "Import fehlgeschlagen")
+                        // Scheiterte der Tausch erst nach dem Schliessen der Verbindung, sind
+                        // die Daten zwar heil, die laufende App aber nicht mehr benutzbar.
+                        if (fehler is NeustartNoetigException) platform.restartApp()
+                    }
+                }
+            }
+        },
+        onPickSignature = { uebernehmen ->
+            scope.launch {
+                val pfad = platform.pickSignatureImage()
+                if (pfad == null) {
+                    // Abbruch im Dialog ist kein Fehler; ein Fehler beim Kopieren schon.
+                    return@launch
+                }
+                uebernehmen(pfad)
+            }
         },
         selectedTabIndex = selectedTabIndex,
         onTabSelected = onTabSelected
@@ -104,55 +144,19 @@ fun DataWindowScreen(
 }
 
 /**
- * Startet den Prozess neu.
- *
- * Nach einem Import haengen alle Room-Flows an der geschlossenen Verbindung;
- * ein blosses `recreate()` der Activity reicht nicht, weil das ViewModel es
- * ueberlebt. Deshalb der harte Weg ueber einen Neustart der Launcher-Activity.
- */
-private fun starteAppNeu(context: Context) {
-    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-    if (intent != null) {
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(intent) }
-            .onFailure { Log.e("DataWindow", "Neustart-Intent konnte nicht gestartet werden", it) }
-    } else {
-        Log.e("DataWindow", "Kein Launch-Intent gefunden")
-    }
-    // Prozess in jedem Fall beenden. Weiterlaufen waere die schlechteste Option:
-    // die Room-Verbindung ist geschlossen, die App wuerde nur noch leere Listen
-    // zeigen. Startet der Intent nicht, oeffnet der Nutzer die App eben selbst -
-    // die eingelesenen Daten sind dann trotzdem da.
-    Runtime.getRuntime().exit(0)
-}
-
-/**
  * Laedt die Unterschrift als Vorschau-Bitmap.
  *
- * Bewusst ohne Coil: die App zeigt genau ein lokales Bild an, und Coil zog dafuer
- * OkHttp samt Netzwerk-Stack ins APK - in einer App ohne INTERNET-Berechtigung.
- * Herunterskaliert, weil ein Kamerafoto sonst den Heap belastet; catch(Throwable),
- * weil OutOfMemoryError ein Error und keine Exception ist.
+ * Bewusst ohne Bibliothek: die App zeigt genau ein lokales Bild an, und Coil zog dafuer
+ * frueher OkHttp samt Netzwerk-Stack ins APK - in einer App ohne INTERNET-Berechtigung.
+ * Das Herunterskalieren passiert in [loadImageFromFile], je Plattform verschieden.
  */
 @Composable
 private fun rememberSignaturePreview(pfad: String): ImageBitmap? {
-    return remember(pfad) {
-        pfad.takeIf { it.isNotBlank() && File(it).exists() }?.let { p ->
-            try {
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeFile(p, bounds)
-                var sample = 1
-                while (bounds.outWidth > 0 && bounds.outWidth / sample > SIGNATURE_PREVIEW_MAX_WIDTH_PX) {
-                    sample *= 2
-                }
-                BitmapFactory.decodeFile(p, BitmapFactory.Options().apply { inSampleSize = sample })
-                    ?.asImageBitmap()
-            } catch (t: Throwable) {
-                Log.e("DataWindow", "Unterschrift-Vorschau konnte nicht geladen werden", t)
-                null
-            }
-        }
+    val bild by produceState<ImageBitmap?>(initialValue = null, key1 = pfad) {
+        value = if (pfad.isBlank()) null
+        else loadImageFromFile(pfad, SIGNATURE_PREVIEW_MAX_WIDTH_PX)
     }
+    return bild
 }
 
 /** Reicht fuer eine 120 dp hohe Vorschau auch auf sehr dichten Bildschirmen. */
@@ -168,13 +172,13 @@ fun DataWindowContent(
     onResetAll: () -> Unit,
     onResetCompanyOnly: () -> Unit,
     onChanged: () -> Unit,
-    onExport: (Uri) -> Unit,
-    onImport: (Uri) -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    /** Öffnet die Bildauswahl und meldet den Pfad der angelegten Kopie zurück. */
+    onPickSignature: ((String) -> Unit) -> Unit,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
-    val context = LocalContext.current
-
     // Initialisierung des lokalen Zustands mit den Daten aus der Datenbank.
     // Durch remember(savedData, resetTrigger) greift remember hier jedes Mal neu,
     // wenn sich die Daten ändern oder ein Reset erzwungen wird.
@@ -192,21 +196,17 @@ fun DataWindowContent(
 
     val scope = rememberCoroutineScope()
 
-    // Sicherung schreiben: der Nutzer waehlt den Zielort selbst, damit die Datei
-    // ausserhalb der App liegt und eine Deinstallation sie nicht mitnimmt.
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(Backup.MIME_TYPE)
-    ) { uri -> uri?.let(onExport) }
-
     // Vor dem Einlesen wird nachgefragt - der Vorgang ersetzt alles Vorhandene.
-    var importQuelle by remember { mutableStateOf<Uri?>(null) }
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri -> importQuelle = uri }
+    //
+    // Die Reihenfolge ist gegenueber der Android-Fassung vertauscht: dort wurde erst die
+    // Datei gewaehlt und danach gefragt. Die gemeinsame Plattformschicht erledigt Auswahl
+    // und Einlesen in einem Schritt, deshalb steht die Rueckfrage jetzt davor. Abbrechen
+    // geht weiterhin auch noch im Dateidialog.
+    var importBestaetigen by remember { mutableStateOf(false) }
 
-    importQuelle?.let { quelle ->
+    if (importBestaetigen) {
         AlertDialog(
-            onDismissRequest = { importQuelle = null },
+            onDismissRequest = { importBestaetigen = false },
             icon = {
                 Icon(
                     Icons.Default.Warning,
@@ -225,45 +225,17 @@ fun DataWindowContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        importQuelle = null
-                        onImport(quelle)
+                        importBestaetigen = false
+                        onImport()
                     }
                 ) {
                     Text("Ersetzen", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { importQuelle = null }) { Text("Abbrechen") }
+                TextButton(onClick = { importBestaetigen = false }) { Text("Abbrechen") }
             }
         )
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri ?: return@rememberLauncherForActivityResult
-        scope.launch {
-            // Kopieren gehoert nicht auf den Main Thread: bei einem grossen Bild -
-            // besonders von einem Cloud-Provider, der den Stream erst herunterlaedt -
-            // friert die UI sonst ein und Android loest einen ANR aus.
-            val ziel = withContext(Dispatchers.IO) {
-                runCatching {
-                    val file = File(context.filesDir, "signature.png")
-                    context.contentResolver.openInputStream(uri).use { input ->
-                        checkNotNull(input) { "Stream konnte nicht geoeffnet werden" }
-                        FileOutputStream(file).use { output -> input.copyTo(output) }
-                    }
-                    file.absolutePath
-                }
-            }
-            ziel.onSuccess { pfad ->
-                companyDataState = companyDataState.copy(signaturePath = pfad)
-                onChanged()
-            }.onFailure { e ->
-                Log.e("DataWindow", "Signatur konnte nicht kopiert werden", e)
-                Toast.makeText(context, "Fehler beim Kopieren der Signatur", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     // Dialog für ALLES zurücksetzen
@@ -359,7 +331,7 @@ fun DataWindowContent(
                         leadingIcon = { Icon(Icons.Default.Save, contentDescription = null) },
                         onClick = {
                             showMenu = false
-                            exportLauncher.launch(Backup.suggestedFileName())
+                            onExport()
                         }
                     )
                     DropdownMenuItem(
@@ -367,7 +339,7 @@ fun DataWindowContent(
                         leadingIcon = { Icon(Icons.Default.Restore, contentDescription = null) },
                         onClick = {
                             showMenu = false
-                            importLauncher.launch(arrayOf("*/*"))
+                            importBestaetigen = true
                         }
                     )
                     HorizontalDivider()
@@ -565,7 +537,13 @@ fun DataWindowContent(
                                     MaterialTheme.shapes.extraSmall
                                 )
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                .clickable { launcher.launch("image/*") },
+                                .clickable {
+                                    onPickSignature { pfad ->
+                                        companyDataState =
+                                            companyDataState.copy(signaturePath = pfad)
+                                        onChanged()
+                                    }
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             if (companyDataState.signaturePath.isNotEmpty() && File(companyDataState.signaturePath).exists()) {
@@ -708,10 +686,10 @@ fun DataField(label: String, value: String, onValueChange: (String) -> Unit) {
     )
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 917)
+@Preview
 @Composable
 fun DataWindowPreview() {
-    HonorarCraftAndroidTheme {
+    HonorarCraftTheme {
         DataWindowContent(
             savedData = CompanyData(),
             isLoading = false,
@@ -722,6 +700,7 @@ fun DataWindowPreview() {
             onChanged = {},
             onExport = {},
             onImport = {},
+            onPickSignature = {},
             selectedTabIndex = 3,
             onTabSelected = {}
         )
