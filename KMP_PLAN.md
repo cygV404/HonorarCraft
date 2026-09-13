@@ -180,9 +180,37 @@ Abgeschlossen. Gewählte Versionen:
 - [x] Der Spike-Code ist entfernt.
 - [ ] Datenbankdatei-Pfad als `expect/actual`: Android `getDatabasePath`, Desktop
       `getAppDataFolder()` (heute `Dashboard.kt:34`).
-- [ ] **Importer** für die alten Desktop-JSONs (`company.json`, `invoices/*.json`,
-      `totals/year_*.json`, `last_invoice_number.txt`) → Room, einmalig beim ersten Start,
-      danach Altbestand umbenennen statt löschen.
+- [x] **Importer** gebaut: `LegacyDesktopImport` in `shared/src/jvmMain/.../legacy/`.
+      Liest `company.json`, `invoices/*.json`, `totals/year_*.json` und
+      `last_invoice_number.txt`, schreibt nach Room und verschiebt den Altbestand
+      anschließend nach `vor-room-<datum>/` — gelöscht wird nichts.
+      Die AES-Entschlüsselung der Identitätsfelder liegt als `LegacyVaultCrypto` daneben;
+      sie liest denselben Preferences-Knoten wie früher und legt bewusst **keinen** neuen
+      Schlüssel an (ohne Schlüssel gibt es nichts zu entschlüsseln).
+      Zwei Fallen beim Abbilden der Daten:
+      - Die alte Fassung speicherte Stunden als `Double`. Die Umwandlung läuft über
+        `BigDecimal(hours.toString())`, nicht über den `Double`-Wert — sonst würde aus
+        1,5 h die binäre Näherung 1,5000000000000002.
+      - Die alte Fassung kannte nur **einen** Honorarsatz für alles. Beim Import bekommt
+        jede Position den damaligen globalen Satz aus `hourRate`.
+- [x] **Abnahme am echten Bestand** (aus `~/honorarcraft-backups/desktop-data-2026-09-13.tar.gz`):
+      10 Rechnungen, 64 Positionen und die Firmendaten übernommen, die verschlüsselten Felder
+      sauber entschlüsselt.
+
+      **Der Jahresumsatz 2026 verschiebt sich dabei von 4.217,28 € auf 4.216,67 €, also um
+      61 Cent nach unten.** Das ist genau der erwartete Effekt: die alte Desktop-Fassung
+      rundete je Rechnung, die übernommene Android-Logik rundet einmal am Ende. Die
+      Android-Rechnung ist die richtige, bereits erzeugte PDFs sind nicht betroffen.
+- [ ] **Offen und eine eigene Entscheidung: die Jahres-Startwerte.** Der reservierte Schlüssel
+      `"S"` in `totals/year_*.json` ist ein von Hand eingetragener Startwert, für den es im
+      Room-Modell keine Entsprechung gibt. Im echten Bestand stehen dort **2024: 271,90 €**
+      und **2025: 4.353,69 €**. Beide Jahre haben keine einzige Position, zeigen nach dem
+      Import also 0,00 € statt der eingetragenen Beträge. Der Importer meldet die Werte in
+      seinem Bericht, und die Dateien liegen weiter im Archivordner — verloren sind sie also
+      nicht, aber die App zeigt sie nicht mehr.
+      Um sie zu behalten, bräuchte es eine eigene Tabelle und damit Schemaversion 12 samt
+      Migration — also auch eine neue Fassung der Play-Store-App. Deshalb hier nicht
+      im Vorbeigehen entschieden.
 - [ ] Abnahme: Ein `.hcbackup` vom Handy lässt sich auf dem Desktop öffnen und zeigt
       dieselben Zahlen.
 
