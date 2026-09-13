@@ -314,8 +314,24 @@ Umfang hängt an Frage 5. Grobrichtung:
 Daten). Handy: Pager mit Tabs am unteren Rand wie bisher. Desktop: dauerhaft sichtbare
 Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 
-- [ ] Gemeinsame Screens in `composeApp/commonMain`, Layout-Unterschiede über eine
-      Breiten-Abfrage statt über zwei getrennte Implementierungen.
+- [x] `AboutDialog.kt`, `Dashboard.kt` und `CreateInvoice.kt` liegen in
+      `composeApp/src/commonMain/.../ui/`. Sie hatten **keine** Android-Importe und mussten
+      nur an drei Stellen angefasst werden:
+      - `androidx.compose.ui.tooling.preview.Preview` → `org.jetbrains.compose...Preview`.
+        Die multiplattformfähige Fassung kennt keine Parameter, `showBackground`/`widthDp`/
+        `heightDp` sind deshalb entfallen.
+      - `HonorarCraftAndroidTheme` → `HonorarCraftTheme`.
+      - `BuildConfig.VERSION_NAME` gibt es auf dem Desktop nicht; die angezeigte Version steht
+        jetzt als `Constants.APP_VERSION` im gemeinsamen Modul. **Dritte Stelle, die bei einem
+        Release mitgepflegt werden muss** — neben `packageVersion` und `versionName`.
+- [ ] `EntryWindow.kt` (513 Zeilen) — braucht nur den Ersatz von `Toast` und einen Haken für
+      die PDF-Erzeugung.
+- [ ] `DataWindow.kt` (729 Zeilen) — der harte Brocken: Datei-Auswahl über
+      `ActivityResultContracts`, `Intent`, `BitmapFactory` für die Unterschriftsvorschau,
+      `Uri` für Sicherungen. Hängt an Phase 6 (Datei-Dialoge, Backup) und kann erst danach
+      vollständig umziehen.
+- [ ] Der adaptive Rahmen (`HonorarCraftApp`) mit Seitenleiste ab ca. 900 dp und Pager
+      darunter. Braucht alle vier Screens.
 - [ ] Desktop-Navigation (`String`-State in `main.kt`) durch dieselbe Tab-/Pager-Logik wie
       auf Android ersetzen.
 - [ ] `minimumSize` von 1440×900 senken, sonst ist das Fenster auf kleinen Notebooks unbedienbar.

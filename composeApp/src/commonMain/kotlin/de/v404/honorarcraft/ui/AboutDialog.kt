@@ -1,4 +1,4 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +18,13 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import de.v404.honorarcraft.shared.MainViewModel
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceFormat
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.data.formatInvoice
 
 @Composable
 fun AboutDialog(onDismiss: () -> Unit) {
@@ -31,7 +38,7 @@ fun AboutDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 Text(
-                    text = "Version ${BuildConfig.VERSION_NAME}",
+                    text = "Version ${Constants.APP_VERSION}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary
                 )

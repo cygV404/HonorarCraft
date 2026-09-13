@@ -1,4 +1,4 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -53,13 +53,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.v404.honorarcraftandroid.ui.theme.HonorarCraftAndroidTheme
+import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
+import de.v404.honorarcraft.shared.MainViewModel
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceFormat
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.data.formatInvoice
 
 @Composable
 fun DashboardScreen(
@@ -369,10 +376,10 @@ fun DashboardControlCard(
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 917)
+@Preview
 @Composable
 fun DashboardPreview() {
-    HonorarCraftAndroidTheme {
+    HonorarCraftTheme {
         DashboardContent(
             totalSum = BigDecimal("12500.00"),
             dashboardYear = 2026,

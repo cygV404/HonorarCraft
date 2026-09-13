@@ -1,4 +1,4 @@
-package de.v404.honorarcraftandroid
+package de.v404.honorarcraft.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -64,9 +64,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import de.v404.honorarcraftandroid.ui.theme.HonorarCraftAndroidTheme
+import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
@@ -74,6 +74,13 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import de.v404.honorarcraft.shared.MainViewModel
+import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceFormat
+import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.data.formatInvoice
 
 /**
  * Zulaessige Zwischenstaende im Stundenfeld: bis zu vier Vorkommastellen und
@@ -508,10 +515,10 @@ fun CreateInvoiceContent(
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 917)
+@Preview
 @Composable
 fun CreateInvoicePreview() {
-    HonorarCraftAndroidTheme {
+    HonorarCraftTheme {
         CreateInvoiceContent(
             displayInvoiceNumber = "1",
             allInvoiceNumbers = listOf("1", "2"),
