@@ -370,9 +370,9 @@ fun DataWindowContent(
             .background(MaterialTheme.colorScheme.background)) {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxHeight()
+                    .align(Alignment.TopCenter)
                     .inhaltsbreite()
-                    .align(Alignment.TopCenter),
+                    .fillMaxHeight(),
                 contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {

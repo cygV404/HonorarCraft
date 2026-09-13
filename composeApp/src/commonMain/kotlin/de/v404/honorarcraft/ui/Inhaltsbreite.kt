@@ -1,9 +1,10 @@
 package de.v404.honorarcraft.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.widthIn
 
 /**
  * Breite, ab der Inhalt nicht weiter mitwächst.
@@ -14,5 +15,15 @@ import androidx.compose.foundation.layout.widthIn
  */
 val MAX_INHALTSBREITE: Dp = 720.dp
 
-/** Begrenzt die Breite auf [MAX_INHALTSBREITE]. Zentriert wird vom umgebenden Layout. */
-fun Modifier.inhaltsbreite(max: Dp = MAX_INHALTSBREITE): Modifier = widthIn(max = max)
+/**
+ * Begrenzt die Breite auf [MAX_INHALTSBREITE] und füllt sie darunter aus.
+ *
+ * Das `fillMaxWidth` steckt bewusst **in** dieser Funktion: als getrennter Aufruf davor
+ * geschrieben, setzt es Mindest- und Höchstbreite auf die Elternbreite, und das
+ * anschließende `widthIn` bleibt wirkungslos. Genau dieser Reihenfolgefehler hat die
+ * Begrenzung beim ersten Anlauf ins Leere laufen lassen.
+ *
+ * Zentriert wird vom umgebenden Layout — `contentAlignment` der `Box` oder `align(...)`.
+ */
+fun Modifier.inhaltsbreite(max: Dp = MAX_INHALTSBREITE): Modifier =
+    widthIn(max = max).fillMaxWidth()
