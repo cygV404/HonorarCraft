@@ -217,16 +217,15 @@ Abgeschlossen. Gewählte Versionen:
       61 Cent nach unten.** Das ist genau der erwartete Effekt: die alte Desktop-Fassung
       rundete je Rechnung, die übernommene Android-Logik rundet einmal am Ende. Die
       Android-Rechnung ist die richtige, bereits erzeugte PDFs sind nicht betroffen.
-- [ ] **Offen und eine eigene Entscheidung: die Jahres-Startwerte.** Der reservierte Schlüssel
-      `"S"` in `totals/year_*.json` ist ein von Hand eingetragener Startwert, für den es im
-      Room-Modell keine Entsprechung gibt. Im echten Bestand stehen dort **2024: 271,90 €**
-      und **2025: 4.353,69 €**. Beide Jahre haben keine einzige Position, zeigen nach dem
-      Import also 0,00 € statt der eingetragenen Beträge. Der Importer meldet die Werte in
-      seinem Bericht, und die Dateien liegen weiter im Archivordner — verloren sind sie also
-      nicht, aber die App zeigt sie nicht mehr.
-      Um sie zu behalten, bräuchte es eine eigene Tabelle und damit Schemaversion 12 samt
-      Migration — also auch eine neue Fassung der Play-Store-App. Deshalb hier nicht
-      im Vorbeigehen entschieden.
+- [x] **Entschieden: die Jahres-Startwerte entfallen.** Der reservierte Schlüssel `"S"` in
+      `totals/year_*.json` war ein von Hand eingetragener Startwert ohne Entsprechung im
+      Room-Modell. Im echten Bestand standen dort **2024: 271,90 €** und **2025: 4.353,69 €**;
+      beide Jahre haben keine einzige Position und zeigen jetzt 0,00 €.
+      Eine eigene Tabelle dafür hätte Schemaversion 12 samt Migration bedeutet — und damit
+      auch eine neue Fassung der Play-Store-App, für zwei Zahlen aus abgeschlossenen Jahren.
+      Der Importer meldet die Werte beim Übernehmen weiterhin, und die Dateien bleiben im
+      Archivordner `vor-room-<datum>/` liegen. Nachschlagbar sind sie also, angezeigt werden
+      sie nicht mehr.
 - [ ] Abnahme: Ein `.hcbackup` vom Handy lässt sich auf dem Desktop öffnen und zeigt
       dieselben Zahlen.
 
@@ -328,6 +327,9 @@ Abgeschlossen. Gewählte Versionen:
 ## Phase 5 — UI
 
 Umfang hängt an Frage 5. Grobrichtung:
+
+**Abgenommen am 14.09.2026:** Übersicht, PDF-Bereich und Daten-Seite zeigen ihre Karten und
+Eingabefelder auf breiten Fenstern mittig und auf 720 dp begrenzt.
 
 **Entschieden:** Dieselben vier Bereiche auf beiden Plattformen (Übersicht, Erstellen, PDF,
 Daten). Handy: Pager mit Tabs am unteren Rand wie bisher. Desktop: dauerhaft sichtbare
