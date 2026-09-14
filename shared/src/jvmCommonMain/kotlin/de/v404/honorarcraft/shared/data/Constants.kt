@@ -7,9 +7,11 @@ object Constants {
     const val DATE_PATTERN = "dd.MM.yyyy"
 
     /**
-     * Angezeigte Programmversion. Muss zu `versionName` in `androidApp/build.gradle.kts` und
-     * zu `packageVersion` in `composeApp/build.gradle.kts` passen — bisher war das die
-     * Android-`BuildConfig`, die es auf dem Desktop nicht gibt.
+     * Angezeigte Programmversion.
+     *
+     * Kommt aus `gradle/libs.versions.toml` (`appVersion`) und wird von Gradle als
+     * `GENERATED_APP_VERSION` erzeugt — dieselbe Quelle wie `packageVersion` auf dem Desktop
+     * und `versionName` auf Android. Zum Anheben nur den Katalogeintrag ändern.
      */
-    const val APP_VERSION = "1.5"
+    val APP_VERSION: String get() = GENERATED_APP_VERSION
 }

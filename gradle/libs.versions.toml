@@ -1,4 +1,10 @@
 [versions]
+# Die eine Stelle fuer die Programmversion. Sie speist packageVersion (Desktop),
+# versionName (Android) und die im Info-Dialog angezeigte Version.
+appVersion = "2.0"
+# Muss bei jedem Play-Store-Release hochgezaehlt werden.
+androidVersionCode = "6"
+
 # Kotlin und Compose sind an die Android-App angeglichen (siehe KMP_PLAN.md, Phase 1).
 kotlin = "2.4.10"
 composeMultiplatform = "1.12.0"

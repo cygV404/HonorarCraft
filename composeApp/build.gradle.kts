@@ -72,7 +72,12 @@ compose.desktop {
 
 
             packageName = "HonorarCraft"
-            packageVersion = "1.2.1"
+            // Die Installer verlangen MAJOR.MINOR.BUILD. Die gemeinsame Quelle ist "2.0",
+            // die fehlende dritte Stelle wird hier ergaenzt statt sie ueberall mitzuschleppen.
+            packageVersion = libs.versions.appVersion.get()
+                .split(".")
+                .let { teile -> (teile + List(3 - teile.size) { "0" }).take(3) }
+                .joinToString(".")
             copyright = "© 2026 Julian Dobrodolac (v404cyg@proton.me)"
             vendor = "Julian Dobrodolac"
             description = "Office App"

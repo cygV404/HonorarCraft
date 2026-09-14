@@ -52,6 +52,36 @@ kotlin {
     }
 }
 
+/**
+ * Erzeugt die Programmversion als Kotlin-Konstante aus dem Versionskatalog.
+ *
+ * Vorher stand sie als Literal in `Constants` und musste bei jedem Release zusätzlich zu
+ * `packageVersion` und `versionName` von Hand nachgezogen werden — eine Stelle zu viel.
+ */
+val appVersionVerzeichnis = layout.buildDirectory.dir("generated/appversion/kotlin")
+val erzeugeAppVersion by tasks.registering {
+    val version = libs.versions.appVersion.get()
+    val ziel = appVersionVerzeichnis
+    inputs.property("version", version)
+    outputs.dir(ziel)
+    doLast {
+        val datei = ziel.get().file("de/v404/honorarcraft/shared/data/AppVersion.kt").asFile
+        datei.parentFile.mkdirs()
+        datei.writeText(
+            """
+            // Erzeugt von Gradle. Nicht von Hand ändern - der Wert steht in
+            // gradle/libs.versions.toml unter "appVersion".
+            package de.v404.honorarcraft.shared.data
+
+            internal const val GENERATED_APP_VERSION: String = "$version"
+
+            """.trimIndent()
+        )
+    }
+}
+
+kotlin.sourceSets.named("jvmCommonMain") { kotlin.srcDir(erzeugeAppVersion) }
+
 room {
     schemaDirectory("$projectDir/schemas")
 }

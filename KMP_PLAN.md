@@ -480,9 +480,24 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 - [ ] CI erst ganz am Schluss wieder scharf schalten, dann mit Android-Build + `ubuntu-latest`
       in der Matrix.
 
-## Was bewusst nicht Teil des Umbaus ist
+## Release 2.0
 
-Play-Store-Release, Signierung, neue Features. `applicationId` bleibt `de.v404.honorarcraft` —
+- Die Programmversion steht an **einer** Stelle: `appVersion` in `gradle/libs.versions.toml`.
+  Daraus speisen sich `packageVersion` (Desktop, um die dritte Stelle ergänzt — die Installer
+  verlangen `MAJOR.MINOR.BUILD`), `versionName` (Android) und die im Info-Dialog angezeigte
+  Version, die Gradle als `GENERATED_APP_VERSION` erzeugt. Vorher standen dieselbe Zahl an
+  drei Stellen.
+- `androidVersionCode` steht daneben im Katalog und muss bei jedem Play-Store-Release
+  hochgezählt werden; für 2.0 ist er auf 6.
+- Die Signierung liest Pfad und Passwörter aus `local.properties` (gitignored), wie zuvor in
+  der Android-App. `proguard-rules.pro` ist mitgekommen, Release läuft mit `isMinifyEnabled`
+  und `isShrinkResources`.
+- Geprüft: `:androidApp:assembleRelease` erzeugt ein signiertes APK
+  (`de.v404.honorarcraft`, versionCode 6, versionName 2.0, 7,8 MB statt 66 MB).
+
+## Was bewusst nicht Teil des Umbaus war
+
+Neue Features. `applicationId` bleibt `de.v404.honorarcraft` —
 die darf sich nie ändern, sonst ist es für den Store eine neue App. Der `namespace` darf.
 
 ## Offene Fragen für die nächste Session

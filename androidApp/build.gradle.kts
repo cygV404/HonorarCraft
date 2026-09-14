@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+}
+
+/**
+ * Signierung aus `local.properties`. Die Datei ist gitignored — Schlüssel und Passwörter
+ * gehören nicht ins Repo.
+ */
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 
 android {
@@ -14,13 +24,29 @@ android {
         applicationId = "de.v404.honorarcraft"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 5
-        versionName = "1.5"
+        versionCode = libs.versions.androidVersionCode.get().toInt()
+        versionName = libs.versions.appVersion.get()
+    }
+
+    signingConfigs {
+        create("release") {
+            val pfad = localProperties.getProperty("release.keystore.path")
+            storeFile = pfad?.let { file(it) }
+            storePassword = localProperties.getProperty("release.keystore.password")
+            keyAlias = localProperties.getProperty("release.key.alias")
+            keyPassword = localProperties.getProperty("release.key.password")
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 

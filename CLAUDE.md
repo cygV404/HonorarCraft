@@ -49,8 +49,11 @@ Die CI (`.github/workflows/package.yml`) paketiert bei Push auf `main` nur auf `
 das Linux-`.deb` wird nicht von der CI gebaut. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter — einen lokalen
 Lint-Task gibt es nicht.
 
-Bei einer neuen Version müssen `packageVersion` in `composeApp/build.gradle.kts` **und** die README-Überschrift
-angepasst werden.
+**Die Programmversion steht an genau einer Stelle:** `appVersion` in `gradle/libs.versions.toml`.
+Daraus speisen sich `packageVersion` (Desktop, um die dritte Stelle ergänzt), `versionName`
+(Android) und die im Info-Dialog angezeigte Version (von Gradle als `GENERATED_APP_VERSION`
+erzeugt). Bei einem Release zusätzlich anzupassen: `androidVersionCode` im selben Katalog und
+die README-Überschrift.
 
 Die Desktop-Icons werden aus einer PNG-Quelle erzeugt, nicht von Hand gepflegt:
 `java tools/MakeIcons.java <quelle.png> composeApp/src/jvmMain/composeResources/drawable`

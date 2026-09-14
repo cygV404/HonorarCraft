@@ -1,6 +1,9 @@
-# HonorarCraft v1.2.1
+# HonorarCraft v2.0
 
-Ein modernes Desktop-Tool zur Honorarabrechnung und Rechnungsverwaltung, entwickelt mit **Compose Multiplatform** und **Kotlin**.
+Ein modernes Tool zur Honorarabrechnung und Rechnungsverwaltung für **Desktop und Android**,
+entwickelt mit **Compose Multiplatform** und **Kotlin**. Beide Plattformen teilen sich
+Datenhaltung, Rechenlogik, Oberfläche und das PDF-Layout; Sicherungen lassen sich zwischen
+Handy und Rechner austauschen.
 
 ## ✨ Funktionen
 
