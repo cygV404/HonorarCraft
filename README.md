@@ -66,34 +66,35 @@ die beide dasselbe Layout-Modell abzeichnen.
 
 **Android:** Über den Google Play Store.
 
-## 📸 Screenshots & Vorschau
+## 📸 Screenshots
 
-> Die folgenden Aufnahmen zeigen noch die Oberfläche der Version 1.x. Mit 2.0 haben sich
-> Aufbau und Farbgebung geändert.
+### Desktop
 
-<details>
-  <summary><b>Hier Klicken, um App-Screenshots und PDF-Beispiele anzuzeigen</b></summary>
+| Übersicht | Firmendaten |
+|---|---|
+| <img alt="Übersicht" src="docs/screenshots/desktop-uebersicht.png" /> | <img alt="Firmendaten" src="docs/screenshots/desktop-daten.png" /> |
 
-  <br>
+Ab etwa 900 dp Fensterbreite steht die Navigation als Seitenleiste, darunter wechselt die
+Oberfläche auf dieselbe Ansicht wie auf dem Handy.
 
-### 🖥️ Programm-Oberfläche
+#### Dunkelmodus
 
-#### Hauptansicht
-  <img width="1920" alt="Hauptansicht" src="https://github.com/user-attachments/assets/b50da043-01ef-4834-8d3e-7b4dc6552a60" />
+<img width="700" alt="Dunkelmodus" src="docs/screenshots/desktop-dunkelmodus.png" />
 
-#### Datenverwaltung
-  <img width="1920" alt="Datenverwaltung" src="https://github.com/user-attachments/assets/b015cd34-d397-4a47-b4e9-44976ea11fd2" />
+### Android
 
-#### Rechnung erstellen
-  <img width="1920" alt="Übersicht" src="https://github.com/user-attachments/assets/9d0e9968-8c4f-4d52-bc2d-6d76b3b0a707" />
+<p align="left">
+  <img width="260" alt="Übersicht" src="docs/screenshots/android-uebersicht.png" />
+  <img width="260" alt="Rechnungspositionen" src="docs/screenshots/android-pdf.png" />
+</p>
 
-  <br>
+Auf Android schlägt die dynamische Farbgebung von Material 3 durch — die App übernimmt dort
+die Systemfarben.
 
-### 📄 PDF-Export Beispiele
-  <p align="left">
-    <img width="300" alt="PDF Export Beispiel 2" src="https://github.com/user-attachments/assets/797e0b58-4e6f-4899-8024-ddcd579ad8af" />
-    <img width="300" alt="PDF Export Beispiel 1" src="https://github.com/user-attachments/assets/1d817a50-1764-4b74-ab2b-bb5ba5d3514a" />
+### 📄 Erzeugte Rechnung
 
-  </p>
+Dasselbe Layout auf beiden Plattformen, hier aus der Android-Fassung:
 
-</details>
+<img width="420" alt="Beispielrechnung" src="docs/screenshots/rechnung-beispiel.png" />
+
+*Alle Aufnahmen zeigen Beispieldaten.*
