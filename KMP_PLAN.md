@@ -494,6 +494,13 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
   und `isShrinkResources`.
 - Geprüft: `:androidApp:assembleRelease` erzeugt ein signiertes APK
   (`de.v404.honorarcraft`, versionCode 6, versionName 2.0, 7,8 MB statt 66 MB).
+- **Auf dem Emulator abgenommen:** Das geschrumpfte, signierte Release installiert, startet und
+  zeigt die Übersicht. R8 und `shrinkResources` lassen die gebündelten Roboto-Schriften stehen
+  (`font/Roboto-*.ttf` sind im APK) — das war das Risiko an der neuen PDF-Schrift.
+  **Nicht geprüft:** die PDF-Erzeugung selbst im geschrumpften Build, und der Ordner-Dialog
+  über das Storage Access Framework. Beides braucht Bedienung am Gerät.
+- Auf Android schlägt wie gewünscht die dynamische Farbgebung durch: die App erscheint dort in
+  den Systemfarben, nicht im Markenschema. Das Markenschema greift auf dem Desktop.
 
 ## Was bewusst nicht Teil des Umbaus war
 
