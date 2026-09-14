@@ -1,41 +1,99 @@
-name: Build Desktop Apps
+name: Build
 
-# Automatischer Build bei Push ist waehrend des KMP-Umbaus abgeschaltet
-# (siehe KMP_PLAN.md). Der Workflow laeuft nur noch manuell ueber
-# "Actions -> Build Desktop Apps -> Run workflow".
-# Zum Reaktivieren die folgenden drei Zeilen wieder einkommentieren.
 on:
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-
-        os: [ windows-latest, macos-latest ]
-    runs-on: ${{ matrix.os }}
-
+  # Zuerst die Tests. Schlagen sie fehl, braucht niemand Pakete zu bauen.
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: JDK 17 einrichten
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Grant execute permission for gradlew
+      - run: chmod +x gradlew
+
+      # jvmTest deckt Desktop ab, testAndroidHostTest laesst die gemeinsamen Tests
+      # zusaetzlich gegen das Android-Target laufen - beides ohne Emulator.
+      - name: Tests ausfuehren
+        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest
+
+      - name: Testberichte sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testberichte
+          path: shared/build/reports/tests/
+
+  # Das Android-Paket. Nur der Debug-Build: der Release-Schluessel liegt nicht im Repo,
+  # und ohne ihn waere das Ergebnis ohnehin unsigniert und nicht ausliefbar.
+  android:
+    name: Android (APK)
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - run: chmod +x gradlew
+
+      # Das Android-SDK ist auf dem Runner vorhanden, ANDROID_HOME ist gesetzt -
+      # eine local.properties mit sdk.dir wird deshalb nicht gebraucht.
+      - name: APK bauen
+        run: ./gradlew :androidApp:assembleDebug
+
+      - name: APK hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: HonorarCraft-android-debug
+          path: androidApp/build/outputs/apk/debug/*.apk
+
+  # Die Desktop-Pakete. Jedes Betriebssystem baut sein eigenes Format;
+  # ubuntu-latest liefert das .deb, das frueher nur von Hand entstand.
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: gradlew ausfuehrbar machen
         run: chmod +x gradlew
         if: runner.os != 'Windows'
 
-      - name: Build MSI or DMG
+      - name: Paket bauen (.deb / .msi / .dmg)
+        run: ./gradlew :composeApp:packageDistributionForCurrentOS
 
-        run: ./gradlew packageDistributionForCurrentOS
-
-      - name: Upload Artifacts
+      - name: Paket hochladen
         uses: actions/upload-artifact@v4
         with:
           name: HonorarCraft-${{ matrix.os }}

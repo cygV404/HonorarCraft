@@ -477,8 +477,16 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
       im Schemastand 4 wird beim Einlesen über die Migrationskette auf 11 gehoben.
 - [x] Verschlüsselung geklärt: fällt weg (Entscheidung 7). `LegacyVaultCrypto` bleibt allein
       für den einmaligen Import bestehen.
-- [ ] CI erst ganz am Schluss wieder scharf schalten, dann mit Android-Build + `ubuntu-latest`
-      in der Matrix.
+- [x] **CI wieder scharf** (14.09.2026), `.github/workflows/package.yml`. Drei Arbeitsschritte:
+      - `tests` auf `ubuntu-latest`: `:shared:jvmTest` und `:shared:testAndroidHostTest`, also
+        Desktop **und** Android-Target ohne Emulator. Läuft zuerst; schlägt er fehl, wird
+        nichts paketiert. Bei Fehlschlag werden die Testberichte als Artefakt hochgeladen.
+      - `android`: `:androidApp:assembleDebug`. Bewusst **kein** Release — der Signierschlüssel
+        liegt nicht im Repo, das Ergebnis wäre unsigniert und nicht ausliefbar. Das SDK ist auf
+        dem Runner vorhanden, eine `local.properties` wird nicht gebraucht.
+      - `desktop`: Matrix aus `ubuntu-latest`, `windows-latest`, `macos-latest`.
+        **Das `.deb` baut damit erstmals die CI**, vorher entstand es nur von Hand.
+      Zusätzlich läuft der Workflow jetzt auch bei Pull Requests.
 
 ## Release 2.0
 
@@ -490,7 +498,9 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 - `androidVersionCode` steht daneben im Katalog und muss bei jedem Play-Store-Release
   hochgezählt werden; für 2.0 ist er auf 6.
 - Die Signierung liest Pfad und Passwörter aus `local.properties` (gitignored), wie zuvor in
-  der Android-App. `proguard-rules.pro` ist mitgekommen, Release läuft mit `isMinifyEnabled`
+  der Android-App. **Fehlt der Schlüssel** — auf dem CI-Rechner oder einer fremden Maschine —
+  wird das Release unsigniert gebaut (`androidApp-release-unsigned.apk`), statt den Build
+  scheitern zu lassen. Sonst käme dort nicht einmal `./gradlew build` durch. `proguard-rules.pro` ist mitgekommen, Release läuft mit `isMinifyEnabled`
   und `isShrinkResources`.
 - Geprüft: `:androidApp:assembleRelease` erzeugt ein signiertes APK
   (`de.v404.honorarcraft`, versionCode 6, versionName 2.0, 7,8 MB statt 66 MB).

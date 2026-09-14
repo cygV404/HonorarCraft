@@ -7,12 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Das Projekt wird gerade zu einem KMP-Projekt ausgebaut, das sich Code mit der Android-App
 unter `~/StudioProjects/HonorarCraftAndroid` teilt. **Arbeitsplan, getroffene Entscheidungen und
 offene Fragen stehen in `KMP_PLAN.md` — vor Änderungen an Architektur, Datenhaltung oder
-Rechenlogik dort nachsehen.** Gearbeitet wird auf dem Branch `kmp`; der GitHub-Actions-Build bei
-Push ist währenddessen abgeschaltet (nur noch `workflow_dispatch`).
+Rechenlogik dort nachsehen.** Der Umbau ist abgeschlossen und auf `main` gepusht; die CI läuft wieder bei jedem Push.
 
-Phase 0 und 1 sind erledigt: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.3.2,
-drei Module (`shared`, `composeApp`, `androidApp`), Paket überall `de.v404.honorarcraft`.
-Die Datenschicht (Phase 2) ist noch die alte Desktop-JSON-Variante.
+Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, drei Module
+(`shared`, `composeApp`, `androidApp`), Paket überall `de.v404.honorarcraft`, Version 2.0.
+Beide Plattformen teilen Datenschicht, ViewModel, Oberfläche und PDF-Layout.
 
 ## Projekt
 
@@ -45,8 +44,11 @@ Für Android-Builds muss `local.properties` ein `sdk.dir` enthalten (die Datei i
 unterstützt höchstens 9.1.x und verweigert sonst den Gradle-Sync. Ein Anheben erst, wenn die
 IDE nachzieht — oder wenn das Projekt nach Android Studio umzieht.
 
-Die CI (`.github/workflows/package.yml`) paketiert bei Push auf `main` nur auf `windows-latest` und `macos-latest`;
-das Linux-`.deb` wird nicht von der CI gebaut. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter — einen lokalen
+Die CI (`.github/workflows/package.yml`) läuft bei Push auf `main`, bei Pull Requests und von
+Hand. Drei Schritte: erst die Tests (`:shared:jvmTest` und `:shared:testAndroidHostTest`), dann
+parallel das Android-Debug-APK und die Desktop-Pakete für `ubuntu-latest`, `windows-latest` und
+`macos-latest` — das `.deb` also eingeschlossen. Ein Android-**Release** baut die CI bewusst
+nicht: der Signierschlüssel liegt nicht im Repo. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter — einen lokalen
 Lint-Task gibt es nicht.
 
 **Die Programmversion steht an genau einer Stelle:** `appVersion` in `gradle/libs.versions.toml`.
