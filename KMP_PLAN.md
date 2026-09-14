@@ -88,9 +88,8 @@ AGP 9 bringt Kotlin-Unterstützung mit.
 - [ ] **Offen, von Hand zu erledigen:** ein `.hcbackup` aus der Android-App exportieren und
       neben das Desktop-Archiv legen. Das ist die Abnahmeprobe für Phase 2.
 - [x] Arbeitsbranch `kmp` angelegt.
-- [ ] Zu beachten: Im Android-Repo liegen uncommittete Änderungen auf dem Branch
-      `fix/datenverlust-und-pdf-export` (u. a. `DataWindow.kt`, `MainActivity.kt`). Die müssen
-      committet sein, **bevor** der Subtree-Import läuft — der Tag `pre-kmp` erfasst sie nicht.
+- [x] Die uncommitteten Änderungen im Android-Repo sind vor dem Subtree-Import committet
+      worden (`850b7a7`, Tab „Vorschau" → „PDF").
 
 ## Phase 1 — Build-Gerüst
 
@@ -194,8 +193,9 @@ Abgeschlossen. Gewählte Versionen:
       Fachvorschläge nach Häufigkeit und Ausblenden ohne Belegverlust, Jahresfilter über das
       Datum, `BigDecimal`-Satz verlustfrei durch den TypeConverter.
 - [x] Der Spike-Code ist entfernt.
-- [ ] Datenbankdatei-Pfad als `expect/actual`: Android `getDatabasePath`, Desktop
-      `getAppDataFolder()` (heute `Dashboard.kt:34`).
+- [x] Datenbankdatei-Pfad je Plattform: `AndroidDatabase` nutzt `getDatabasePath`,
+      `DesktopDatabase` den `desktopAppDataFolder()` in `:shared`. Kein `expect/actual` nötig —
+      beide Seiten erzeugen die Datenbank ohnehin in eigenem Code.
 - [x] **Importer** gebaut: `LegacyDesktopImport` in `shared/src/jvmMain/.../legacy/`.
       Liest `company.json`, `invoices/*.json`, `totals/year_*.json` und
       `last_invoice_number.txt`, schreibt nach Room und verschiebt den Altbestand
@@ -240,9 +240,8 @@ Abgeschlossen. Gewählte Versionen:
       nur zufällig im ViewModel.
 - [x] Rechenlogik (`totalSum`, `totalLessonUnit`), `InvoiceFormat`/`formatInvoice` und
       `Constants` liegen in `:shared`.
-- [ ] **Offen:** Die Desktop-Varianten `totalCostsHours` / `totalCostsLessonUnits` mit der
-      vertauschten Benennung streichen. Geht erst, wenn die Desktop-Oberfläche auf die
-      gemeinsame Logik umgestellt ist — bis dahin hängt die laufende App daran.
+- [x] Die Desktop-Varianten `totalCostsHours` / `totalCostsLessonUnits` mit der vertauschten
+      Benennung sind mit den alten Screens gelöscht (`7641583`).
 - [x] `MainViewModel` liegt in `shared/src/jvmCommonMain`. Es erbt jetzt von
       `androidx.lifecycle.ViewModel` statt von `AndroidViewModel`; **Datenbank und
       Einstellungsspeicher werden hereingereicht**, statt aus einem `Application`-Objekt
@@ -314,15 +313,15 @@ Abgeschlossen. Gewählte Versionen:
       `favicon.svg` liegt im Asset-Ordner und wäre der bessere Ausgangspunkt.
 - [x] Das Theme hängt jetzt auf beiden Plattformen (`HonorarCraftTheme`), auf dem Desktop
       ersetzt `MaterialTheme.colorScheme.background` das harte `Color.White`.
-- [ ] **Bewusst noch nicht: Dunkelmodus auf dem Desktop.** Die Screens dieses Moduls tragen
-      rund drei Dutzend fest verdrahtete Farben; mit `isSystemInDarkTheme()` wäre die
-      Oberfläche auf einem dunkel eingestellten System halb unlesbar. In `main.kt` steht
-      deshalb `HonorarCraftTheme(darkTheme = false)`. Sobald die Screens in Phase 5 durch die
-      gemeinsame Oberfläche ersetzt sind, kann der Parameter entfallen — der Vorgabewert ist
-      bereits `isSystemInDarkTheme()`.
-- [ ] Die PDF-Schriften (`Roboto-*.ttf` unter `jvmMain/resources/font/`) bleiben, wo sie
-      sind — die lädt PDFBox über den ClassLoader, das ist ein anderer Mechanismus als
-      Compose Resources.
+- [x] Dunkelmodus auf dem Desktop ist aktiv: die Screens mit den fest verdrahteten Farben sind
+      gelöscht, `main.kt` ruft `HonorarCraftTheme { }` ohne `darkTheme`-Parameter auf und folgt
+      damit der Systemeinstellung.
+      **Ungeprüft:** Auf einem dunkel eingestellten System hat die App noch niemand gesehen.
+- [x] Die PDF-Schriften (`Roboto-*.ttf`) liegen jetzt in `shared/src/jvmMain/resources/font/`,
+      beim PDFBox-Renderer. Geladen werden sie weiterhin über den ClassLoader — ein anderer
+      Mechanismus als Compose Resources, die Dateien gehören deshalb nicht zusammen.
+      Die Kopie unter `composeApp` ist mit dem alten Renderer weggefallen, ebenso die
+      Abhängigkeiten auf PDFBox und JNA in `composeApp`.
 
 ## Phase 5 — UI
 
@@ -377,8 +376,9 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
       Benennung verschwunden — der offene Punkt aus Phase 3.
 - [x] `minimumSize` von 1440×900 auf 800×600 gesenkt. Unterhalb von 900 dp greift dieselbe
       Pager-Ansicht wie auf dem Handy, das Fenster bleibt also bedienbar.
-- [ ] Dialoge, die es nur auf einer Seite gibt, angleichen: `AboutDialog` (Android) und
-      der Werkseinstellungen-Dialog (Desktop).
+- [x] Die Dialoge sind angeglichen: `AboutDialog` liegt in `commonMain` und wird vom Dashboard
+      aufgerufen, der frühere Desktop-Dialog für Werkseinstellungen ist mit den alten Screens
+      weggefallen — zurücksetzen läuft jetzt über die Daten-Seite.
 
 ## Phase 6 — Plattformspezifisches
 
