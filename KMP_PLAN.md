@@ -85,8 +85,8 @@ AGP 9 bringt Kotlin-Unterstützung mit.
       `HonorarCraftAndroid`. Beide sind noch nicht gepusht.
 - [x] Desktop-Nutzdaten gesichert: `~/honorarcraft-backups/desktop-data-2026-09-13.tar.gz`
       (gesamtes `~/.honorarcraft`, 18 Dateien).
-- [ ] **Offen, von Hand zu erledigen:** ein `.hcbackup` aus der Android-App exportieren und
-      neben das Desktop-Archiv legen. Das ist die Abnahmeprobe für Phase 2.
+- [x] Ein `.hcbackup` aus der Android-App wurde exportiert und auf dem Desktop eingelesen —
+      die Abnahmeprobe für Phase 2 ist bestanden (14.09.2026).
 - [x] Arbeitsbranch `kmp` angelegt.
 - [x] Die uncommitteten Änderungen im Android-Repo sind vor dem Subtree-Import committet
       worden (`850b7a7`, Tab „Vorschau" → „PDF").
@@ -230,8 +230,9 @@ Abgeschlossen. Gewählte Versionen:
       Der Importer meldet die Werte beim Übernehmen weiterhin, und die Dateien bleiben im
       Archivordner `vor-room-<datum>/` liegen. Nachschlagbar sind sie also, angezeigt werden
       sie nicht mehr.
-- [ ] Abnahme: Ein `.hcbackup` vom Handy lässt sich auf dem Desktop öffnen und zeigt
-      dieselben Zahlen.
+- [x] **Abnahme bestanden (14.09.2026):** Ein `.hcbackup` vom Handy lässt sich auf dem Desktop
+      einlesen. Damit ist belegt, wofür die ganze Phase 2 gemacht wurde — beide Plattformen
+      teilen sich dasselbe Datenformat, samt Migrationskette für ältere Sicherungen.
 
 ## Phase 3 — Fachlogik und Tests teilen
 
