@@ -45,6 +45,10 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutinesTest)
         }
+        jvmTest.dependencies {
+            // MigrationTestHelper prueft die Migrationskette gegen die exportierten Schemas.
+            implementation(libs.androidx.room.testing)
+        }
     }
 }
 

@@ -161,6 +161,10 @@ Abgeschlossen. Gewählte Versionen:
       Achtung bei der History: `git log -- <pfad>` zeigt wegen der Pfadverschiebung nur den
       Import-Commit. Was wirklich funktioniert:
       `git log --full-history -- android-legacy/<neuer pfad> <alter pfad>`.
+- [x] **`android-legacy/` ist entfernt.** Alles Nötige war umgezogen; die letzten Dateien
+      waren `CreatePdf.kt` (durch das gemeinsame Layout mit zwei Renderern ersetzt), zwei
+      leere Beispieltests sowie `MigrationTest.kt` und `BackupTest.kt` — deren Inhalt wurde
+      vorher nach `:shared` übernommen, siehe unten. Die History bleibt im Repo.
 - [x] `InvoiceData`, `InvoiceEntry`, `CompanyData`, `HiddenSubject`, `Converters`,
       `Constants`, `AppDatabase`, `Migrations` liegen jetzt unter
       `shared/src/jvmCommonMain/.../shared/data/`, Paket `de.v404.honorarcraft.shared.data`.
@@ -231,6 +235,11 @@ Abgeschlossen. Gewählte Versionen:
 
 ## Phase 3 — Fachlogik und Tests teilen
 
+- [x] `MigrationTest` liegt in `shared/src/jvmTest` und prüft die Kette 4→11, 6→11, 9→11 und
+      10→11 gegen die exportierten Schemas. **Er brauchte als Instrumentierungstest ein Gerät;
+      Room-KMP bringt einen `MigrationTestHelper` für die JVM mit, der Test läuft jetzt mit
+      `./gradlew :shared:jvmTest`.** Das ist die Absicherung gegen genau den Fehler, der bis
+      Version 9 bei jedem Schema-Update die Rechnungen gelöscht hat.
 - [x] `CalculationTest.kt` liegt in `shared/src/jvmCommonTest` und läuft damit gegen **beide**
       Plattformen: 14 Tests, grün unter `:shared:jvmTest` und `:shared:testAndroidHostTest`.
       JUnit-Importe durch `kotlin.test` ersetzt (gleiche `assertEquals`-Semantik, `BigDecimal`
@@ -450,9 +459,11 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
         `execSQL` reicht nicht, weil `PRAGMA wal_checkpoint` eine Zeile zurückliefert.
       - `AppDatabase.getDatabase(context)` und `context.cacheDir` sind zu Parametern geworden
         (`databaseFile`, `workDir`, `closeDatabase`).
-- [x] `BackupTest` (4 Tests) prüft den Rundlauf und vor allem die beiden Abweisungen: eine
+- [x] `BackupTest` (5 Tests) prüft den Rundlauf und vor allem die beiden Abweisungen: eine
       Textdatei und eine echte, aber fremde SQLite-Datenbank werden zurückgewiesen, **bevor**
       irgendetwas angefasst wird — die vorhandenen Rechnungen bleiben in beiden Fällen stehen.
+      Dazu der Fall, für den das rohe Datenbankformat überhaupt gewählt wurde: eine Sicherung
+      im Schemastand 4 wird beim Einlesen über die Migrationskette auf 11 gehoben.
 - [x] Verschlüsselung geklärt: fällt weg (Entscheidung 7). `LegacyVaultCrypto` bleibt allein
       für den einmaligen Import bestehen.
 - [ ] CI erst ganz am Schluss wieder scharf schalten, dann mit Android-Build + `ubuntu-latest`

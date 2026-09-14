@@ -133,6 +133,51 @@ class BackupTest {
         assertEquals(listOf("07"), db!!.invoiceDao().getAllInvoiceNumbers().first())
     }
 
+    /**
+     * Der eigentliche Grund, warum das Sicherungsformat die rohe Datenbankdatei ist: eine
+     * Sicherung aus einer älteren App-Fassung wird beim Einlesen über die Migrationskette auf
+     * den aktuellen Stand gehoben, statt abgewiesen zu werden.
+     */
+    @Test
+    fun `eine aeltere Sicherung wird ueber die Migrationskette gehoben`() = runTest {
+        // Eine Sicherung im Schemastand 4 bauen - damals hing der Honorarsatz noch an der
+        // Rechnung statt an der Position.
+        val altOrdner = Files.createTempDirectory("hc-alt")
+        val alteDatei = altOrdner.resolve("alt.db")
+        val helper = androidx.room.testing.MigrationTestHelper(
+            schemaDirectoryPath = java.nio.file.Path.of("schemas"),
+            databasePath = alteDatei,
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(4).use { alt ->
+            alt.execSQL("INSERT INTO invoices (invoiceNumber, rate) VALUES ('05', '31.50')")
+            alt.execSQL(
+                "INSERT INTO invoice_entries (invoiceNumber, date, lessonUnits, teachingSubject) " +
+                    "VALUES ('05', '02.09.2026', '3.0', 'Englisch')"
+            )
+        }
+
+        val version = Backup.import(
+            databaseFile = dbFile,
+            workDir = File(dir, "arbeit"),
+            source = alteDatei.toFile().inputStream(),
+            closeDatabase = { db!!.close() },
+        ).getOrThrow()
+        assertEquals(4, version, "Die Sicherung wird mit ihrer eigenen Version gemeldet")
+
+        // Beim Öffnen hebt Room sie auf den aktuellen Stand.
+        neuOeffnen()
+        val rechnung = db!!.invoiceDao().getInvoiceWithEntries("05").first()
+        assertEquals(1, rechnung?.entries?.size)
+        assertEquals(
+            BigDecimal("31.50"),
+            rechnung?.entries?.first()?.rate,
+            "Die Position muss den Satz ihrer Rechnung geerbt haben",
+        )
+        altOrdner.toFile().deleteRecursively()
+    }
+
     @Test
     fun `der Dateiname traegt das Datum`() {
         assertEquals(
