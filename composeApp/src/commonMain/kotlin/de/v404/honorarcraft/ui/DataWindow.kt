@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,6 +73,9 @@ import de.v404.honorarcraft.shared.backup.NeustartNoetigException
 import de.v404.honorarcraft.ui.platform.LocalPlatformServices
 import de.v404.honorarcraft.ui.platform.loadImageFromFile
 import androidx.compose.runtime.produceState
+import androidx.compose.material3.FilterChip
+import de.v404.honorarcraft.shared.ThemeMode
+import de.v404.honorarcraft.ui.platform.istLinux
 
 @Composable
 fun DataWindowScreen(
@@ -84,6 +88,7 @@ fun DataWindowScreen(
     val savedData by mainViewModel.companyData.collectAsState()
     val isLoading by mainViewModel.isLoading.collectAsState()
     val resetTrigger by mainViewModel.resetDataWindowTrigger.collectAsState()
+    val themeMode by mainViewModel.themeMode.collectAsState()
 
     DataWindowContent(
         savedData = savedData,
@@ -129,6 +134,8 @@ fun DataWindowScreen(
                 }
             }
         },
+        themeMode = themeMode,
+        onThemeModeChange = { mainViewModel.setThemeMode(it) },
         onPickPdfFolder = { uebernehmen ->
             scope.launch { platform.pickPdfFolder()?.let(uebernehmen) }
         },
@@ -185,6 +192,8 @@ fun DataWindowContent(
     onPickPdfFolder: ((String) -> Unit) -> Unit,
     /** Macht aus dem gespeicherten Pfad etwas Lesbares. */
     beschreibePdfOrdner: (String) -> String,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
@@ -614,6 +623,46 @@ fun DataWindowContent(
                     }
                 }
 
+                item { SectionHeader("Darstellung") }
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ThemeMode.entries.forEach { modus ->
+                                FilterChip(
+                                    selected = themeMode == modus,
+                                    onClick = { onThemeModeChange(modus) },
+                                    label = {
+                                        Text(
+                                            when (modus) {
+                                                ThemeMode.SYSTEM -> "System"
+                                                ThemeMode.LIGHT -> "Hell"
+                                                ThemeMode.DARK -> "Dunkel"
+                                            }
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        if (themeMode == ThemeMode.SYSTEM && istLinux()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Unter Linux meldet das System seine Einstellung nicht an die " +
+                                    "App — „System\" bleibt deshalb hell. Bitte „Dunkel\" wählen.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
                 item { SectionHeader("Ablage") }
                 item {
                     Column(
@@ -761,6 +810,8 @@ fun DataWindowPreview() {
             onPickSignature = {},
             onPickPdfFolder = {},
             beschreibePdfOrdner = { it },
+            themeMode = ThemeMode.SYSTEM,
+            onThemeModeChange = {},
             selectedTabIndex = 3,
             onTabSelected = {}
         )

@@ -1,7 +1,5 @@
 package de.v404.honorarcraft
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
@@ -14,7 +12,6 @@ import de.v404.honorarcraft.resources.Res
 import de.v404.honorarcraft.resources.iconWindows
 import de.v404.honorarcraft.ui.HonorarCraftApp
 import de.v404.honorarcraft.ui.platform.rememberMainViewModel
-import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import org.jetbrains.compose.resources.painterResource
 import java.awt.Dimension
 
@@ -34,10 +31,10 @@ fun main() = application {
         // dieselbe Pager-Ansicht wie auf dem Handy.
         window.minimumSize = Dimension(800, 600)
 
-        HonorarCraftTheme {
-            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                HonorarCraftApp(viewModel = rememberMainViewModel())
-            }
+        // Kein Theme hier: es sitzt in HonorarCraftApp, weil die gewaehlte Darstellung aus
+        // dem ViewModel kommt.
+        Box(modifier = Modifier.fillMaxSize()) {
+            HonorarCraftApp(viewModel = rememberMainViewModel())
         }
     }
 }

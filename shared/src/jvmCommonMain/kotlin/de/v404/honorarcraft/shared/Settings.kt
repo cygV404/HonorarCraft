@@ -47,4 +47,5 @@ object SettingsKeys {
     const val INVOICE_MONTH = "invoice_month"
     const val SELECTED_INVOICE_NUMBER = "selected_invoice_number"
     const val INVOICE_FORMAT = "invoice_format"
+    const val THEME_MODE = "theme_mode"
 }

@@ -103,6 +103,17 @@ class MainViewModel(
     )
     val selectedInvoiceNumber: StateFlow<String> = _selectedInvoiceNumber.asStateFlow()
 
+    /** Hell, dunkel oder der Systemeinstellung folgen. */
+    private val _themeMode = MutableStateFlow(
+        ThemeMode.fromName(settings.getString(SettingsKeys.THEME_MODE, ThemeMode.SYSTEM.name))
+    )
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        settings.putString(SettingsKeys.THEME_MODE, mode.name)
+    }
+
     private val _invoiceFormat = MutableStateFlow(
         runCatching {
             InvoiceFormat.valueOf(
@@ -403,6 +414,7 @@ class MainViewModel(
                 _invoiceMonth.value = now.get(Calendar.MONTH) + 1
                 _selectedInvoiceNumber.value = "1"
                 _invoiceFormat.value = InvoiceFormat.NUMBER
+                _themeMode.value = ThemeMode.SYSTEM
 
                 _hasUnsavedChanges.value = false
                 _resetDataWindowTrigger.value += 1

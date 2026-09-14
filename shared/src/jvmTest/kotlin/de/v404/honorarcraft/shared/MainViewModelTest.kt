@@ -128,6 +128,19 @@ class MainViewModelTest {
         }
 
     @Test
+    fun `die gewaehlte Darstellung wird gemerkt`() = test {
+        val vm = viewModel()
+        assertEquals(ThemeMode.SYSTEM, vm.themeMode.value, "Vorgabe folgt dem System")
+
+        vm.setThemeMode(ThemeMode.DARK)
+        assertEquals(ThemeMode.DARK, vm.themeMode.value)
+        assertEquals("DARK", settings.getString(SettingsKeys.THEME_MODE, ""))
+
+        // Ein neues ViewModel auf demselben Speicher muss die Wahl vorfinden.
+        assertEquals(ThemeMode.DARK, MainViewModel(db, settings).themeMode.value)
+    }
+
+    @Test
     fun `Zuruecksetzen leert Daten und Einstellungen`() = test {
         val vm = viewModel()
         vm.setSelectedInvoiceNumber("42")
@@ -141,6 +154,7 @@ class MainViewModelTest {
         assertEquals(emptyList(), db.invoiceDao().getAllInvoiceNumbers().first())
         assertEquals("1", vm.selectedInvoiceNumber.value)
         assertEquals(InvoiceFormat.NUMBER, vm.invoiceFormat.value)
+        assertEquals(ThemeMode.SYSTEM, vm.themeMode.value)
         assertEquals("", settings.getString(SettingsKeys.SELECTED_INVOICE_NUMBER, ""))
     }
 }

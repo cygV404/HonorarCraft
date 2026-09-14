@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import de.v404.honorarcraft.ui.HonorarCraftApp
 import de.v404.honorarcraft.ui.platform.rememberMainViewModel
-import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 
 /**
  * Einstiegspunkt auf Android. Alles Sichtbare kommt aus `:composeApp/commonMain`; hier stehen
@@ -20,9 +19,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            HonorarCraftTheme {
-                HonorarCraftApp(viewModel = rememberMainViewModel())
-            }
+            // Das Theme sitzt in HonorarCraftApp - die gewaehlte Darstellung kommt aus dem
+            // ViewModel und ist hier noch nicht erreichbar.
+            HonorarCraftApp(viewModel = rememberMainViewModel())
         }
     }
 }

@@ -325,7 +325,14 @@ Abgeschlossen. Gewählte Versionen:
 - [x] Dunkelmodus auf dem Desktop ist aktiv: die Screens mit den fest verdrahteten Farben sind
       gelöscht, `main.kt` ruft `HonorarCraftTheme { }` ohne `darkTheme`-Parameter auf und folgt
       damit der Systemeinstellung.
-      **Ungeprüft:** Auf einem dunkel eingestellten System hat die App noch niemand gesehen.
+      **Unter Linux trägt `isSystemInDarkTheme()` allerdings nicht:** Skikos `getSystemTheme()`
+      liefert dort fest `UNKNOWN`, Compose liest daraus „hell". Windows und macOS fragen die
+      Systemeinstellung ab, Android ohnehin.
+- [x] **Eigene Einstellung „System / Hell / Dunkel"** auf der Daten-Seite, gespeichert in
+      `Settings` neben Rechnungsnummer und Format. Sie überschreibt die Systemerkennung und
+      umgeht damit die Linux-Lücke; unter Linux steht ein Hinweis dabei, dass „System" dort
+      hell bleibt. Das Theme sitzt dafür jetzt **innerhalb** von `HonorarCraftApp` — nur dort
+      ist das ViewModel erreichbar, aus dem die Wahl kommt.
 - [x] Die PDF-Schriften (`Roboto-*.ttf`) liegen jetzt in `shared/src/jvmMain/resources/font/`,
       beim PDFBox-Renderer. Geladen werden sie weiterhin über den ClassLoader — ein anderer
       Mechanismus als Compose Resources, die Dateien gehören deshalb nicht zusammen.

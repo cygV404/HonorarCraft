@@ -43,9 +43,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
 import de.v404.honorarcraft.shared.MainViewModel
+import de.v404.honorarcraft.shared.ThemeMode
 import de.v404.honorarcraft.ui.platform.LocalPlatformServices
 import de.v404.honorarcraft.ui.platform.rememberPlatformServices
+import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import kotlinx.coroutines.CancellationException
 
 /** Die vier Bereiche der App, auf beiden Plattformen dieselben. */
@@ -77,6 +80,22 @@ private enum class PagerSteuerung { RUHE, NUTZER, PROGRAMM }
  */
 @Composable
 fun HonorarCraftApp(viewModel: MainViewModel) {
+    val darstellung by viewModel.themeMode.collectAsState()
+    val dunkel = when (darstellung) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
+    // Das Theme sitzt **innerhalb** der App, nicht darum herum: nur hier ist das ViewModel
+    // erreichbar, aus dem die gewaehlte Darstellung kommt.
+    HonorarCraftTheme(darkTheme = dunkel) {
+        AppInhalt(viewModel)
+    }
+}
+
+@Composable
+private fun AppInhalt(viewModel: MainViewModel) {
     val platform = rememberPlatformServices()
     val ausgewaehlt by viewModel.selectedTabIndex.collectAsState()
     val offeneAenderung by viewModel.pendingTabIndex.collectAsState()
