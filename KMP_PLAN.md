@@ -322,9 +322,12 @@ Abgeschlossen. Gewählte Versionen:
       `favicon.svg` liegt im Asset-Ordner und wäre der bessere Ausgangspunkt.
 - [x] Das Theme hängt jetzt auf beiden Plattformen (`HonorarCraftTheme`), auf dem Desktop
       ersetzt `MaterialTheme.colorScheme.background` das harte `Color.White`.
-- [x] Dunkelmodus auf dem Desktop ist aktiv: die Screens mit den fest verdrahteten Farben sind
-      gelöscht, `main.kt` ruft `HonorarCraftTheme { }` ohne `darkTheme`-Parameter auf und folgt
-      damit der Systemeinstellung.
+- [x] **Dunkelmodus auf dem Desktop abgenommen (14.09.2026).** Die Markenfarben tragen dort,
+      nichts Lila oder Rosa bleibt übrig — die nachgetragene Flächenreihe greift also.
+      Geprüft wurde die Übersicht; Erstellen, PDF und Daten im Dunkeln hat noch niemand
+      angesehen.
+      Die Screens mit den fest verdrahteten Farben sind gelöscht, das Theme folgt der
+      Einstellung aus dem ViewModel.
       **Unter Linux trägt `isSystemInDarkTheme()` allerdings nicht:** Skikos `getSystemTheme()`
       liefert dort fest `UNKNOWN`, Compose liest daraus „hell". Windows und macOS fragen die
       Systemeinstellung ab, Android ohnehin.
