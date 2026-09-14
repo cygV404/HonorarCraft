@@ -14,6 +14,34 @@ import java.io.File
 import java.io.OutputStream
 
 /**
+ * Die mitgelieferte Roboto-Schrift, dieselbe Datei wie beim PDFBox-Renderer.
+ *
+ * Vorher stand hier `Typeface.DEFAULT`, also die Systemschrift des Geräts — auf einem Pixel
+ * Roboto, auf einem Samsung etwas anderes. Dieselbe Rechnung sah damit je nach Handy anders
+ * aus als auf dem Desktop.
+ *
+ * `Typeface` kann nur aus einer Datei lesen, nicht aus einem Strom. Die Schrift wird deshalb
+ * einmalig aus den Ressourcen in eine temporäre Datei geschrieben. Fehlt sie, bleibt es bei
+ * der Systemschrift — ein fehlendes Zeichen wäre schlimmer als eine abweichende Schrift.
+ */
+private object PdfSchriften {
+    val regular: Typeface by lazy { laden("/font/Roboto-Regular.ttf") ?: Typeface.DEFAULT }
+    val bold: Typeface by lazy {
+        laden("/font/Roboto-Bold.ttf") ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private fun laden(pfad: String): Typeface? = runCatching {
+        val strom = PdfSchriften::class.java.getResourceAsStream(pfad) ?: return@runCatching null
+        val datei = File.createTempFile("honorarcraft-font", ".ttf")
+        datei.deleteOnExit()
+        strom.use { eingang -> datei.outputStream().use { eingang.copyTo(it) } }
+        Typeface.createFromFile(datei)
+    }.onFailure {
+        logError("InvoicePdf", "Schrift $pfad nicht ladbar, es bleibt bei der Systemschrift", it)
+    }.getOrNull()
+}
+
+/**
  * Android-Renderer auf `android.graphics.pdf.PdfDocument`.
  *
  * Anders als PDFBox zählt Canvas Y bereits von oben, die Koordinaten des Layouts passen also
@@ -23,14 +51,17 @@ private fun paint(font: PdfFont): Paint = Paint().apply {
     isAntiAlias = true
     color = android.graphics.Color.BLACK
     when (font) {
-        PdfFont.REGULAR -> textSize = PdfMetrics.FONT_SIZE_REGULAR
+        PdfFont.REGULAR -> {
+            textSize = PdfMetrics.FONT_SIZE_REGULAR
+            typeface = PdfSchriften.regular
+        }
         PdfFont.BOLD -> {
             textSize = PdfMetrics.FONT_SIZE_REGULAR
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            typeface = PdfSchriften.bold
         }
         PdfFont.TITLE -> {
             textSize = PdfMetrics.FONT_SIZE_TITLE
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            typeface = PdfSchriften.bold
         }
     }
 }

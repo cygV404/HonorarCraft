@@ -34,6 +34,18 @@ interface PlatformServices {
     suspend fun importBackup(): Result<Int>?
 
     /**
+     * Lässt den Ordner für die erzeugten PDFs wählen.
+     *
+     * @return Was in `CompanyData.pdfPath` gespeichert wird. Auf dem Desktop ein Dateipfad,
+     *   auf Android die `content://`-Adresse des gewählten Ordnerbaums samt dauerhaftem
+     *   Zugriffsrecht. Beides landet im selben Feld — die Plattform weiß, wie sie es liest.
+     */
+    suspend fun pickPdfFolder(): String?
+
+    /** Beschreibt [pdfPath] so, dass es der Nutzer lesen kann. */
+    fun describePdfFolder(pdfPath: String): String
+
+    /**
      * Erzeugt die Rechnung als PDF und legt sie am plattformüblichen Ort ab.
      *
      * Gezeichnet wird auf beiden Seiten aus demselben Layout; hier unterscheidet sich nur,

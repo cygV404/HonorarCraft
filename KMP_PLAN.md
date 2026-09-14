@@ -400,13 +400,22 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 - [x] **Eine Korrektur gegenüber der Android-Vorlage:** Die Zeile „UE Gesamt a 45 Min" setzte
       dort das `BigDecimal` direkt ein und druckte damit einen englischen Punkt (`12.27`).
       Jetzt steht überall das deutsche Format (`12,27`).
-- [ ] **Noch offen an der Schrift:** Der Desktop-Renderer bündelt Roboto, der Android-Renderer
-      nimmt weiterhin `Typeface.DEFAULT`, also die Systemschrift des Geräts. Für wirklich
-      identische Dokumente müsste die TTF auch auf der Android-Seite als Asset mitgeliefert
-      und über `Typeface.createFromFile` geladen werden.
-- [ ] **Noch offen am Ausgabeort:** Der Desktop schreibt in den frei wählbaren `pdfPath`,
-      Android fest über den MediaStore nach `Dokumente/HonorarCraft`. Ein frei wählbarer
-      Ordner auf Android bräuchte das Storage Access Framework.
+- [x] **Schrift vereinheitlicht.** Der Android-Renderer nimmt jetzt dieselbe gebündelte
+      Roboto-TTF wie der Desktop statt `Typeface.DEFAULT`. Die Dateien liegen als
+      Java-Ressourcen in `shared/src/androidMain/resources/font/` und landen damit im APK
+      (geprüft: `font/Roboto-Bold.ttf` ist enthalten).
+      `Typeface` kann nur aus einer Datei lesen, nicht aus einem Strom — die Schrift wird
+      deshalb einmalig in eine temporäre Datei geschrieben. Fehlt sie, bleibt es bei der
+      Systemschrift: ein fehlendes Zeichen wäre schlimmer als eine abweichende Schrift.
+- [x] **Ausgabeort auf beiden Seiten wählbar.** `PlatformServices.pickPdfFolder()` öffnet auf
+      dem Desktop einen Ordner-Dialog, auf Android das Storage Access Framework
+      (`OpenDocumentTree`) samt dauerhaftem Zugriffsrecht — ohne das wäre die Auswahl nach dem
+      nächsten Start wertlos. Beides landet in `CompanyData.pdfPath`; auf Android als
+      `content://`-Adresse, auf dem Desktop als Dateipfad.
+      Ist auf Android nichts gewählt, bleibt es beim bisherigen Weg über den MediaStore nach
+      `Dokumente/HonorarCraft`. Die Daten-Seite zeigt den Ordner jetzt unter „Ablage" an und
+      lässt ihn dort ändern — vorher gab es diese Einstellung auf keiner der beiden
+      Plattformen mehr, seit die alten Desktop-Screens weg sind.
 - [x] Datei-Dialoge liegen hinter der Schnittstelle `PlatformServices`
       (`composeApp/.../ui/platform/`): Unterschrift auswählen, Sicherung schreiben, Sicherung
       einlesen, Neustart. Desktop über `JFileChooser`, Android über das Storage Access

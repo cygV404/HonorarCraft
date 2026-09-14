@@ -76,6 +76,19 @@ class DesktopPlatformServices : PlatformServices {
         )
     }
 
+    override suspend fun pickPdfFolder(): String? = withContext(Dispatchers.IO) {
+        val chooser = JFileChooser().apply {
+            dialogTitle = "Ordner für die Rechnungen wählen"
+            fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+            isAcceptAllFileFilterUsed = false
+        }
+        if (chooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) return@withContext null
+        chooser.selectedFile?.absolutePath
+    }
+
+    override fun describePdfFolder(pdfPath: String): String =
+        pdfPath.ifBlank { File(System.getProperty("user.home"), "Dokumente/Honorarabrechnungen").absolutePath }
+
     /**
      * Schreibt die Rechnung in den eingestellten Ordner. Fehlt die Angabe, landet sie im
      * Dokumentenordner des Nutzers.

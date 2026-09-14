@@ -129,6 +129,10 @@ fun DataWindowScreen(
                 }
             }
         },
+        onPickPdfFolder = { uebernehmen ->
+            scope.launch { platform.pickPdfFolder()?.let(uebernehmen) }
+        },
+        beschreibePdfOrdner = { platform.describePdfFolder(it) },
         onPickSignature = { uebernehmen ->
             scope.launch {
                 val pfad = platform.pickSignatureImage()
@@ -177,6 +181,10 @@ fun DataWindowContent(
     onImport: () -> Unit,
     /** Öffnet die Bildauswahl und meldet den Pfad der angelegten Kopie zurück. */
     onPickSignature: ((String) -> Unit) -> Unit,
+    /** Öffnet die Ordnerauswahl für die erzeugten PDFs. */
+    onPickPdfFolder: ((String) -> Unit) -> Unit,
+    /** Macht aus dem gespeicherten Pfad etwas Lesbares. */
+    beschreibePdfOrdner: (String) -> String,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
@@ -606,6 +614,45 @@ fun DataWindowContent(
                     }
                 }
 
+                item { SectionHeader("Ablage") }
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Ordner für die Rechnungen",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    MaterialTheme.shapes.extraSmall
+                                )
+                                .clickable {
+                                    onPickPdfFolder { pfad ->
+                                        companyDataState = companyDataState.copy(pdfPath = pfad)
+                                        onChanged()
+                                    }
+                                }
+                                .padding(16.dp),
+                        ) {
+                            Text(
+                                text = beschreibePdfOrdner(companyDataState.pdfPath),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+
                 item { SectionHeader("Finanzdaten") }
                 item {
                     DataField(
@@ -712,6 +759,8 @@ fun DataWindowPreview() {
             onExport = {},
             onImport = {},
             onPickSignature = {},
+            onPickPdfFolder = {},
+            beschreibePdfOrdner = { it },
             selectedTabIndex = 3,
             onTabSelected = {}
         )

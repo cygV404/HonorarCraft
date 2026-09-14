@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,11 +34,35 @@ import java.io.File
 private class AndroidPlatformServices(
     private val context: Context,
     private val pickImage: suspend () -> Uri?,
+    private val pickFolder: suspend () -> Uri?,
     private val pickExportTarget: suspend (String) -> Uri?,
     private val pickImportSource: suspend () -> Uri?,
 ) : PlatformServices {
 
     private val databaseFile: File get() = context.getDatabasePath(DATABASE_FILE_NAME)
+
+    override suspend fun pickPdfFolder(): String? {
+        val baum = pickFolder() ?: return null
+        // Ohne dauerhaftes Recht waere die Auswahl nach dem naechsten Start wertlos.
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                baum,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }.onFailure {
+            logError("PlatformServices", "Dauerhafter Zugriff auf den Ordner scheiterte", it)
+            return null
+        }
+        return baum.toString()
+    }
+
+    override fun describePdfFolder(pdfPath: String): String {
+        if (pdfPath.isBlank()) return "Dokumente/HonorarCraft"
+        val uri = runCatching { Uri.parse(pdfPath) }.getOrNull() ?: return pdfPath
+        // Der Baum-Bezeichner sieht aus wie "primary:Documents/Rechnungen".
+        val bezeichner = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
+        return bezeichner?.substringAfter(':')?.ifBlank { null } ?: pdfPath
+    }
 
     override suspend fun pickSignatureImage(): String? {
         val uri = pickImage() ?: return null
@@ -87,9 +112,31 @@ private class AndroidPlatformServices(
         company: CompanyData,
         formattedInvoiceNumber: String,
     ): Result<String> = runCatching {
+        val dateiname = "Rechnung_$formattedInvoiceNumber.pdf"
+
+        // Hat der Nutzer einen Ordner gewaehlt, wird dorthin geschrieben.
+        val gewaehlt = company.pdfPath.takeIf { it.startsWith("content://") }
+        if (gewaehlt != null) {
+            val baum = Uri.parse(gewaehlt)
+            val ordnerUri = DocumentsContract.buildDocumentUriUsingTree(
+                baum,
+                DocumentsContract.getTreeDocumentId(baum),
+            )
+            val ziel = DocumentsContract.createDocument(
+                context.contentResolver, ordnerUri, "application/pdf", dateiname
+            )
+            checkNotNull(ziel) { "Datei konnte im gewählten Ordner nicht angelegt werden" }
+            val strom = withContext(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(ziel)
+            }
+            checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
+            createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
+            return@runCatching describePdfFolder(gewaehlt)
+        }
+
         val ordner = "${Environment.DIRECTORY_DOCUMENTS}/HonorarCraft"
         val werte = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "Rechnung_$formattedInvoiceNumber.pdf")
+            put(MediaStore.MediaColumns.DISPLAY_NAME, dateiname)
             put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
             put(MediaStore.MediaColumns.RELATIVE_PATH, ordner)
         }
@@ -129,6 +176,11 @@ actual fun rememberPlatformServices(): PlatformServices {
         ActivityResultContracts.CreateDocument(Backup.MIME_TYPE)
     ) { uri -> exportErgebnis.removeFirstOrNull()?.complete(uri) }
 
+    val ordnerErgebnis = remember { ArrayDeque<CompletableDeferred<Uri?>>() }
+    val ordnerWaehler = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri -> ordnerErgebnis.removeFirstOrNull()?.complete(uri) }
+
     val importErgebnis = remember { ArrayDeque<CompletableDeferred<Uri?>>() }
     val importWaehler = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -139,6 +191,9 @@ actual fun rememberPlatformServices(): PlatformServices {
             context = context.applicationContext,
             pickImage = {
                 CompletableDeferred<Uri?>().also { bildErgebnis.addLast(it); bildWaehler.launch("image/*") }.await()
+            },
+            pickFolder = {
+                CompletableDeferred<Uri?>().also { ordnerErgebnis.addLast(it); ordnerWaehler.launch(null) }.await()
             },
             pickExportTarget = { name ->
                 CompletableDeferred<Uri?>().also { exportErgebnis.addLast(it); exportWaehler.launch(name) }.await()
