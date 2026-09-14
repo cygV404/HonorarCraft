@@ -497,8 +497,18 @@ Seitenleiste statt Pager. Ein Satz Screens, der Unterschied liegt nur im Rahmen.
 - **Auf dem Emulator abgenommen:** Das geschrumpfte, signierte Release installiert, startet und
   zeigt die Übersicht. R8 und `shrinkResources` lassen die gebündelten Roboto-Schriften stehen
   (`font/Roboto-*.ttf` sind im APK) — das war das Risiko an der neuen PDF-Schrift.
-  **Nicht geprüft:** die PDF-Erzeugung selbst im geschrumpften Build, und der Ordner-Dialog
-  über das Storage Access Framework. Beides braucht Bedienung am Gerät.
+- **Upgrade-Test 1.5 → 2.0 bestanden (14.09.2026).** Auf dem Emulator: 1.5 installiert, eine
+  Position angelegt (2,5 h Mathe → 76,67 €), dann 2.0 **darüber** installiert ohne zu
+  deinstallieren. Die Daten sind unverändert da, kein Absturz, keine Room-Meldung. Das war der
+  Test, der über die Rechnungen bestehender Nutzer entscheidet.
+- **PDF-Erzeugung im geschrumpften Release-Build geprüft.** Das erzeugte Dokument trägt
+  `Roboto-Bold` eingebettet — die gebündelte Schrift überlebt R8 also —, zeigt deutsches
+  Zahlenformat (`23,00 €`, `76,67 €`, `3,33`) und die Fußzeile „Seite 1 von 2". Layout
+  identisch zur Desktop-Fassung, also erzeugen beide Plattformen dasselbe Dokument.
+  Nebenbei belegt: Firmendaten speichern und die Snackbar-Meldungen funktionieren im
+  Release-Build.
+  **Weiter ungeprüft:** der Ordner-Dialog über das Storage Access Framework und
+  Sicherung schreiben/einlesen auf Android.
 - Auf Android schlägt wie gewünscht die dynamische Farbgebung durch: die App erscheint dort in
   den Systemfarben, nicht im Markenschema. Das Markenschema greift auf dem Desktop.
 
