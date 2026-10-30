@@ -2,6 +2,10 @@ package de.v404.honorarcraft.shared
 
 import de.v404.honorarcraft.shared.data.AppDatabase
 import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceDetails
+import de.v404.honorarcraft.shared.data.InvoiceData
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
 import de.v404.honorarcraft.shared.data.InvoiceFormat
 import de.v404.honorarcraft.shared.data.createDesktopDatabase
@@ -114,8 +118,10 @@ class MainViewModelTest {
     @Test
     fun `Eintrag uebernimmt den Honorarsatz aus den Firmendaten und trimmt die Eingaben`() =
         test {
+            db.companyDao().insertCompanyData(CompanyData(rate = BigDecimal("31.50")))
+            db.customerDao().upsertCustomer(Customer(nameOrOrga = "Ohne eigenen Satz"))
             val vm = viewModel()
-                db.companyDao().insertCompanyData(CompanyData(rate = BigDecimal("31.50")))
+            testScheduler.advanceUntilIdle()
 
             vm.updateInvoiceForm(date = " 02.09.2026 ", hours = " 3 ", subject = " Mathe ")
             vm.addEntryFromForm()
@@ -128,6 +134,150 @@ class MainViewModelTest {
             assertEquals(BigDecimal("31.50"), entry.rate)
             assertEquals(BigDecimal("3"), entry.lessonUnits)
         }
+
+    // ---------- Mehrere Kunden ----------
+
+    private suspend fun kunde(name: String, satz: String? = null): Long =
+        db.customerDao().upsertCustomer(Customer(nameOrOrga = name, rate = satz?.let(::BigDecimal)))
+
+    private fun TestScope.erfasse(vm: MainViewModel, stunden: String = "3") {
+        vm.updateInvoiceForm(date = "02.09.2026", hours = stunden, subject = "Mathe")
+        vm.addEntryFromForm()
+        testScheduler.advanceUntilIdle()
+    }
+
+    @Test
+    fun `ohne Kunden wird nichts erfasst`() = test {
+        val vm = viewModel()
+        val meldung = async { vm.messages.first() }
+        testScheduler.advanceUntilIdle()
+
+        erfasse(vm)
+
+        assertTrue(meldung.await().contains("Kunden anlegen"))
+        assertNull(vm.lastAddedEntry.value)
+    }
+
+    @Test
+    fun `der Satz des Kunden geht dem allgemeinen vor`() = test {
+        db.companyDao().insertCompanyData(CompanyData(rate = BigDecimal("23.00")))
+        kunde("Teurer Kunde", satz = "40.00")
+        val vm = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        erfasse(vm)
+
+        assertEquals(BigDecimal("40.00"), vm.lastAddedEntry.value?.rate)
+    }
+
+    @Test
+    fun `neue Rechnung gehoert dem gewaehlten Kunden und uebernimmt die Angaben`() = test {
+        val a = kunde("A")
+        val b = kunde("B")
+        val vm = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        // Erste Rechnung für B mit Angaben aus dem Entwurf.
+        vm.selectCustomer(b)
+        vm.setSelectedInvoiceNumber("1")
+        testScheduler.advanceUntilIdle()
+        vm.updateInvoiceDetails(InvoiceDetails("Zentrum B", "B-1", "Maßnahme B"))
+        erfasse(vm)
+
+        val erste = db.invoiceDao().getInvoice("01")!!
+        assertEquals(b, erste.customerId)
+        assertEquals("Zentrum B", erste.eduCenter)
+
+        // Nächste Nummer: neue Rechnung, wieder für B, Angaben vorbelegt.
+        vm.incrementInvoiceNumber()
+        testScheduler.advanceUntilIdle()
+        assertEquals(b, vm.selectedCustomer.value?.id)
+        assertEquals(InvoiceDetails("Zentrum B", "B-1", "Maßnahme B"), vm.invoiceDetails.value)
+
+        // Für A gibt es noch keine Rechnung, also nichts vorzubelegen.
+        vm.selectCustomer(a)
+        testScheduler.advanceUntilIdle()
+        assertEquals(InvoiceDetails(), vm.invoiceDetails.value)
+    }
+
+    @Test
+    fun `eine bestehende Rechnung schaltet auf ihren Kunden um`() = test {
+        val a = kunde("A")
+        val b = kunde("B")
+        db.invoiceDao().insertInvoice(InvoiceData("05", customerId = b))
+        val vm = viewModel()
+        vm.selectCustomer(a)
+        testScheduler.advanceUntilIdle()
+
+        vm.setSelectedInvoiceNumber("5")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(b, vm.selectedCustomer.value?.id)
+        assertEquals(b.toString(), settings.getString(SettingsKeys.SELECTED_CUSTOMER_ID, ""))
+    }
+
+    @Test
+    fun `Angaben einer bestehenden Rechnung werden direkt gespeichert`() = test {
+        val a = kunde("A")
+        db.invoiceDao().insertInvoice(InvoiceData("05", customerId = a, eduCenter = "alt"))
+        val vm = viewModel()
+        vm.setSelectedInvoiceNumber("5")
+        testScheduler.advanceUntilIdle()
+
+        vm.updateInvoiceDetails(InvoiceDetails("neu", "", ""))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("neu", db.invoiceDao().getInvoice("05")!!.eduCenter)
+        assertEquals("neu", vm.invoiceDetails.value.eduCenter)
+    }
+
+    @Test
+    fun `der Jahresumsatz folgt dem Kundenfilter`() = test {
+        val a = kunde("A")
+        val b = kunde("B")
+        val dao = db.invoiceDao()
+        dao.insertInvoice(InvoiceData("01", customerId = a))
+        dao.insertInvoice(InvoiceData("02", customerId = b))
+        // 3 h = 4 UE; 4 * 23 = 92,00 und 4 * 10 = 40,00
+        dao.insertEntry(InvoiceEntry(invoiceNumber = "01", date = "02.09.2026", lessonUnits = BigDecimal("3"), teachingSubject = "", rate = BigDecimal("23.00")))
+        dao.insertEntry(InvoiceEntry(invoiceNumber = "02", date = "03.09.2026", lessonUnits = BigDecimal("3"), teachingSubject = "", rate = BigDecimal("10.00")))
+
+        val vm = viewModel()
+        val umsatz = async { vm.yearlyRevenue.first { it.signum() != 0 } }
+        vm.setDashboardYear(2026)
+        testScheduler.advanceUntilIdle()
+        assertEquals(BigDecimal("132.00"), umsatz.await())
+
+        val nurB = async { vm.yearlyRevenue.first { it == BigDecimal("40.00") } }
+        vm.setDashboardCustomerFilter(b)
+        testScheduler.advanceUntilIdle()
+        assertEquals(BigDecimal("40.00"), nurB.await())
+        assertEquals(b.toString(), settings.getString(SettingsKeys.DASHBOARD_CUSTOMER_FILTER, ""))
+    }
+
+    @Test
+    fun `ein Kunde mit Rechnungen laesst sich nur archivieren`() = test {
+        val a = kunde("A")
+        db.invoiceDao().insertInvoice(InvoiceData("01", customerId = a))
+        val vm = viewModel()
+        val meldung = async { vm.messages.first() }
+        testScheduler.advanceUntilIdle()
+
+        vm.deleteCustomer(a)
+        testScheduler.advanceUntilIdle()
+        assertTrue(meldung.await().contains("archiviert"))
+        assertTrue(db.customerDao().getCustomer(a) != null)
+
+        vm.setCustomerArchived(a, true)
+        testScheduler.advanceUntilIdle()
+        assertTrue(db.customerDao().getCustomer(a)!!.archived)
+        // Die bestehende Rechnung zeigt ihren Kunden weiter, auch archiviert ...
+        assertEquals(a, vm.selectedCustomer.value?.id)
+        // ... für eine neue Rechnung steht er aber nicht mehr zur Wahl.
+        vm.setSelectedInvoiceNumber("9")
+        testScheduler.advanceUntilIdle()
+        assertNull(vm.selectedCustomer.value, "Archivierte Kunden stehen nicht zur Wahl")
+    }
 
     @Test
     fun `die gewaehlte Darstellung wird gemerkt`() = test {

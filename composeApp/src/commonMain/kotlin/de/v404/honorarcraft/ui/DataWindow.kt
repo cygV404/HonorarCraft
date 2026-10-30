@@ -68,6 +68,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import de.v404.honorarcraft.shared.MainViewModel
 import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.backup.Backup
 import de.v404.honorarcraft.shared.backup.NeustartNoetigException
 import de.v404.honorarcraft.ui.platform.LocalPlatformServices
@@ -89,9 +90,14 @@ fun DataWindowScreen(
     val isLoading by mainViewModel.isLoading.collectAsState()
     val resetTrigger by mainViewModel.resetDataWindowTrigger.collectAsState()
     val themeMode by mainViewModel.themeMode.collectAsState()
+    val kunden by mainViewModel.customers.collectAsState()
 
     DataWindowContent(
         savedData = savedData,
+        kunden = kunden,
+        onSaveCustomer = { mainViewModel.saveCustomer(it) },
+        onArchiveCustomer = { id, archiviert -> mainViewModel.setCustomerArchived(id, archiviert) },
+        onDeleteCustomer = { mainViewModel.deleteCustomer(it) },
         isLoading = isLoading,
         resetTrigger = resetTrigger,
         onSave = { mainViewModel.saveCompanyData(it) },
@@ -178,6 +184,10 @@ private const val SIGNATURE_PREVIEW_MAX_WIDTH_PX = 1080
 @Composable
 fun DataWindowContent(
     savedData: CompanyData?,
+    kunden: List<Customer>,
+    onSaveCustomer: (Customer) -> Unit,
+    onArchiveCustomer: (Long, Boolean) -> Unit,
+    onDeleteCustomer: (Long) -> Unit,
     isLoading: Boolean,
     resetTrigger: Int,
     onSave: (CompanyData) -> Unit,
@@ -209,6 +219,7 @@ fun DataWindowContent(
     }
 
     var showMenu by remember { mutableStateOf(false) }
+    var kundeInBearbeitung by remember { mutableStateOf<Customer?>(null) }
     var showResetAllDialog by remember { mutableStateOf(false) }
     var showResetCompanyDialog by remember { mutableStateOf(false) }
 
@@ -256,6 +267,25 @@ fun DataWindowContent(
         )
     }
 
+    kundeInBearbeitung?.let { kunde ->
+        KundenDialog(
+            kunde = kunde,
+            onSpeichern = {
+                onSaveCustomer(it)
+                kundeInBearbeitung = null
+            },
+            onArchivieren = { archiviert ->
+                onArchiveCustomer(kunde.id, archiviert)
+                kundeInBearbeitung = null
+            },
+            onLoeschen = {
+                onDeleteCustomer(kunde.id)
+                kundeInBearbeitung = null
+            },
+            onSchliessen = { kundeInBearbeitung = null },
+        )
+    }
+
     // Dialog für ALLES zurücksetzen
     if (showResetAllDialog) {
         AlertDialog(
@@ -271,7 +301,7 @@ fun DataWindowContent(
             text = {
                 Text(
                     "Möchten Sie wirklich alle Daten zurücksetzen? " +
-                            "Dabei werden alle Kundendaten, Rechnungen und Rechnungsnummern gelöscht. " +
+                            "Dabei werden alle Kunden, Rechnungen und Rechnungsnummern gelöscht. " +
                             "Bereits generierte PDF-Dateien bleiben davon unberührt."
                 )
             },
@@ -400,93 +430,12 @@ fun DataWindowContent(
                 contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 100.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item { SectionHeader("Kundendaten") }
-                item {
-                    DataField(
-                        label = "Bildungszentrum",
-                        value = companyDataState.eduCenter,
-                        onValueChange = {
-                            companyDataState = companyDataState.copy(eduCenter = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Standort Nr",
-                        value = companyDataState.locationNr,
-                        onValueChange = {
-                            companyDataState = companyDataState.copy(locationNr = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Schulart/Maßnahme",
-                        value = companyDataState.schoolType,
-                        onValueChange = {
-                            companyDataState = companyDataState.copy(schoolType = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Name/Orga",
-                        value = companyDataState.customerSecondNameOrOrga,
-                        onValueChange = {
-                            companyDataState =
-                                companyDataState.copy(customerSecondNameOrOrga = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Vorname",
-                        value = companyDataState.customerFirstName,
-                        onValueChange = {
-                            companyDataState =
-                                companyDataState.copy(customerFirstName = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Straße",
-                        value = companyDataState.customerStreet,
-                        onValueChange = {
-                            companyDataState =
-                                companyDataState.copy(customerStreet = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Hausnummer",
-                        value = companyDataState.customerStreetNumber,
-                        onValueChange = {
-                            companyDataState =
-                                companyDataState.copy(customerStreetNumber = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "PLZ",
-                        value = companyDataState.customerPlz,
-                        onValueChange = {
-                            companyDataState = companyDataState.copy(customerPlz = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Postfach",
-                        value = companyDataState.customerMailBox,
-                        onValueChange = {
-                            companyDataState =
-                                companyDataState.copy(customerMailBox = it); onChanged()
-                        })
-                }
-                item {
-                    DataField(
-                        label = "Ort",
-                        value = companyDataState.customerCityName,
-                        onValueChange = {
-                            companyDataState =
-                                companyDataState.copy(customerCityName = it); onChanged()
-                        })
-                }
+                item { SectionHeader("Kunden") }
+                kundenAbschnitt(
+                    kunden = kunden,
+                    onBearbeiten = { kundeInBearbeitung = it },
+                    onNeu = { kundeInBearbeitung = Customer() },
+                )
 
                 item { SectionHeader("Meine Daten") }
                 item {
@@ -799,6 +748,10 @@ fun DataWindowPreview() {
     HonorarCraftTheme {
         DataWindowContent(
             savedData = CompanyData(),
+            kunden = listOf(Customer(id = 1, nameOrOrga = "Bildungswerk", cityName = "Ulm")),
+            onSaveCustomer = {},
+            onArchiveCustomer = { _, _ -> },
+            onDeleteCustomer = {},
             isLoading = false,
             resetTrigger = 0,
             onSave = {},

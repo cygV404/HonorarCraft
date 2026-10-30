@@ -2,18 +2,50 @@ package de.v404.honorarcraft.shared.data
 
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * Represents the main invoice data stored in the 'invoices' table.
+ * Kopf einer Rechnung.
+ *
+ * Bildungszentrum, Standortnummer und Schulart/Maßnahme stehen hier und nicht am Kunden, weil
+ * sie von Rechnung zu Rechnung wechseln. Eine neue Rechnung übernimmt sie als Vorschlag von der
+ * letzten Rechnung desselben Kunden.
+ *
+ * Der Kunde lässt sich nicht löschen, solange Rechnungen an ihm hängen (`RESTRICT`).
  */
-@Entity(tableName = "invoices")
-data class InvoiceData(
-    @PrimaryKey val invoiceNumber: String
+@Entity(
+    tableName = "invoices",
+    foreignKeys = [
+        ForeignKey(
+            entity = Customer::class,
+            parentColumns = ["id"],
+            childColumns = ["customerId"],
+            onDelete = ForeignKey.RESTRICT,
+        )
+    ],
+    indices = [Index(value = ["customerId"])],
 )
+data class InvoiceData(
+    @PrimaryKey val invoiceNumber: String,
+    val customerId: Long,
+    val eduCenter: String = "",
+    val locationNr: String = "",
+    val schoolType: String = "",
+)
+
+/** Die drei Angaben, die je Rechnung wechseln. */
+data class InvoiceDetails(
+    val eduCenter: String = "",
+    val locationNr: String = "",
+    val schoolType: String = "",
+)
+
+val InvoiceData.details: InvoiceDetails get() = InvoiceDetails(eduCenter, locationNr, schoolType)
 
 /**
  * Represents the one-to-many relationship between an Invoice and its Entries.
@@ -25,7 +57,12 @@ data class InvoiceWithEntries(
         parentColumn = "invoiceNumber",
         entityColumn = "invoiceNumber"
     )
-    val entries: List<InvoiceEntry>
+    val entries: List<InvoiceEntry>,
+    @Relation(
+        parentColumn = "customerId",
+        entityColumn = "id"
+    )
+    val customer: Customer?,
 ) {
     val totalSum: BigDecimal
         get() = entries.fold(BigDecimal.ZERO) { acc, entry ->

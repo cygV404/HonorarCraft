@@ -153,6 +153,124 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
+/**
+ * 11 → 12: Mehrere Kunden.
+ *
+ * - Neue Tabelle `customers`. Der bisherige Empfänger aus `company_data` wird Kunde 1.
+ * - `invoices` bekommt `customerId` (Fremdschlüssel, `RESTRICT`) und die drei Angaben, die je
+ *   Rechnung wechseln (`eduCenter`, `locationNr`, `schoolType`). Alle Bestandsrechnungen hängen
+ *   an Kunde 1 und erben die bisherigen Werte aus `company_data`.
+ * - `company_data` verliert die zehn verschobenen Spalten.
+ *
+ * Kunde 1 entsteht nur, wenn es etwas zu übernehmen gibt: Rechnungen oder ausgefüllte
+ * Empfängerfelder. Ohne beides (frische Installation) startet die Tabelle leer.
+ *
+ * `invoices` wird neu gebaut, weil SQLite keine Fremdschlüssel nachträglich anlegen kann. Dabei
+ * gilt dasselbe wie in [MIGRATION_5_6]: `DROP TABLE invoices` löst das `ON DELETE CASCADE` von
+ * `invoice_entries` aus, deshalb werden die Positionen vorher in eine Hilfstabelle ohne
+ * Fremdschlüssel gesichert und danach zurückgespielt.
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("PRAGMA defer_foreign_keys = TRUE")
+
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `customers` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nameOrOrga` TEXT NOT NULL, " +
+                "`firstName` TEXT NOT NULL, `street` TEXT NOT NULL, `streetNumber` TEXT NOT NULL, " +
+                "`plz` TEXT NOT NULL, `mailBox` TEXT NOT NULL, `cityName` TEXT NOT NULL, " +
+                "`rate` TEXT, `archived` INTEGER NOT NULL)"
+        )
+
+        // Der bisherige Empfänger wird Kunde 1. LEFT JOIN auf eine Ein-Zeilen-Abfrage, damit
+        // auch ohne Zeile in company_data (aber mit Rechnungen) ein Kunde entsteht.
+        connection.execSQL(
+            """
+            INSERT INTO `customers`
+                (`id`, `nameOrOrga`, `firstName`, `street`, `streetNumber`, `plz`, `mailBox`,
+                 `cityName`, `rate`, `archived`)
+            SELECT 1,
+                   CASE WHEN TRIM(COALESCE(c.`customerSecondNameOrOrga`, '')) = ''
+                         AND TRIM(COALESCE(c.`customerFirstName`, '')) = ''
+                        THEN 'Kunde 1'
+                        ELSE COALESCE(c.`customerSecondNameOrOrga`, '') END,
+                   COALESCE(c.`customerFirstName`, ''),
+                   COALESCE(c.`customerStreet`, ''),
+                   COALESCE(c.`customerStreetNumber`, ''),
+                   COALESCE(c.`customerPlz`, ''),
+                   COALESCE(c.`customerMailBox`, ''),
+                   COALESCE(c.`customerCityName`, ''),
+                   NULL,
+                   0
+              FROM (SELECT 1) AS eins
+              LEFT JOIN `company_data` c ON c.`id` = 1
+             WHERE EXISTS (SELECT 1 FROM `invoices`)
+                OR TRIM(COALESCE(c.`customerSecondNameOrOrga`, '') || COALESCE(c.`customerFirstName`, '')
+                        || COALESCE(c.`customerStreet`, '') || COALESCE(c.`customerStreetNumber`, '')
+                        || COALESCE(c.`customerPlz`, '') || COALESCE(c.`customerMailBox`, '')
+                        || COALESCE(c.`customerCityName`, '')) <> ''
+            """.trimIndent()
+        )
+
+        // --- invoices neu bauen, Positionen dabei schützen -----------------------------
+        connection.execSQL("CREATE TABLE `_entries_backup` AS SELECT * FROM `invoice_entries`")
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `_new_invoices` (`invoiceNumber` TEXT NOT NULL, " +
+                "`customerId` INTEGER NOT NULL, `eduCenter` TEXT NOT NULL, " +
+                "`locationNr` TEXT NOT NULL, `schoolType` TEXT NOT NULL, " +
+                "PRIMARY KEY(`invoiceNumber`), FOREIGN KEY(`customerId`) REFERENCES " +
+                "`customers`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )"
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `_new_invoices`
+                (`invoiceNumber`, `customerId`, `eduCenter`, `locationNr`, `schoolType`)
+            SELECT i.`invoiceNumber`, 1,
+                   COALESCE(c.`eduCenter`, ''),
+                   COALESCE(c.`locationNr`, ''),
+                   COALESCE(c.`schoolType`, '')
+              FROM `invoices` i
+              LEFT JOIN `company_data` c ON c.`id` = 1
+            """.trimIndent()
+        )
+        connection.execSQL("DROP TABLE `invoices`")
+        connection.execSQL("ALTER TABLE `_new_invoices` RENAME TO `invoices`")
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_invoices_customerId` ON `invoices` (`customerId`)"
+        )
+
+        connection.execSQL("DELETE FROM `invoice_entries`")
+        connection.execSQL(
+            "INSERT INTO `invoice_entries` " +
+                "(`id`, `invoiceNumber`, `date`, `lessonUnits`, `teachingSubject`, `rate`) " +
+                "SELECT `id`, `invoiceNumber`, `date`, `lessonUnits`, `teachingSubject`, `rate` " +
+                "FROM `_entries_backup`"
+        )
+        connection.execSQL("DROP TABLE `_entries_backup`")
+
+        // --- company_data ohne die verschobenen Spalten --------------------------------
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `_new_company_data` (`id` INTEGER NOT NULL, " +
+                "`billerSecondName` TEXT NOT NULL, `billerFirstName` TEXT NOT NULL, " +
+                "`billerStreetName` TEXT NOT NULL, `billerStreetNumber` TEXT NOT NULL, " +
+                "`billerPlzNumber` TEXT NOT NULL, `billerCityName` TEXT NOT NULL, " +
+                "`taxNumber` TEXT NOT NULL, `billerIban` TEXT NOT NULL, `billerBIC` TEXT NOT NULL, " +
+                "`rate` TEXT NOT NULL, `signaturePath` TEXT NOT NULL, `pdfPath` TEXT NOT NULL, " +
+                "PRIMARY KEY(`id`))"
+        )
+        connection.execSQL(
+            "INSERT INTO `_new_company_data` (`id`, `billerSecondName`, `billerFirstName`, " +
+                "`billerStreetName`, `billerStreetNumber`, `billerPlzNumber`, `billerCityName`, " +
+                "`taxNumber`, `billerIban`, `billerBIC`, `rate`, `signaturePath`, `pdfPath`) " +
+                "SELECT `id`, `billerSecondName`, `billerFirstName`, `billerStreetName`, " +
+                "`billerStreetNumber`, `billerPlzNumber`, `billerCityName`, `taxNumber`, " +
+                "`billerIban`, `billerBIC`, `rate`, `signaturePath`, `pdfPath` FROM `company_data`"
+        )
+        connection.execSQL("DROP TABLE `company_data`")
+        connection.execSQL("ALTER TABLE `_new_company_data` RENAME TO `company_data`")
+    }
+}
+
 /** Alle Migrationen in einer Liste – auch für den Migrationstest verwendbar. */
 val ALL_MIGRATIONS = arrayOf(
     MIGRATION_3_4,
@@ -163,4 +281,5 @@ val ALL_MIGRATIONS = arrayOf(
     MIGRATION_8_9,
     MIGRATION_9_10,
     MIGRATION_10_11,
+    MIGRATION_11_12,
 )

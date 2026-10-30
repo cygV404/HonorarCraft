@@ -11,12 +11,24 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.Transaction
 import androidx.room.TypeConverters
+import androidx.room.Update
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface InvoiceDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * Legt eine Rechnung an; existiert die Nummer schon, passiert nichts.
+     *
+     * Nie `REPLACE`: SQLite ersetzt durch Löschen und Neuanlegen, und das `ON DELETE CASCADE`
+     * von `invoice_entries` nähme dabei alle Positionen der Rechnung mit. Ändern geht über
+     * [updateInvoice].
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertInvoice(invoice: InvoiceData)
+
+    @Update
+    suspend fun updateInvoice(invoice: InvoiceData)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: InvoiceEntry)
@@ -50,19 +62,48 @@ interface InvoiceDao {
     @Query("DELETE FROM hidden_subjects WHERE name = :subject")
     suspend fun unhideSubject(subject: String)
 
-    @Delete
-    suspend fun deleteInvoice(invoice: InvoiceData)
+    @Query("DELETE FROM invoices WHERE invoiceNumber = :invoiceNumber")
+    suspend fun deleteInvoice(invoiceNumber: String)
+
+    /** Die zuletzt angelegte Rechnung eines Kunden — Vorlage für die Rechnungsangaben. */
+    @Query("SELECT * FROM invoices WHERE customerId = :customerId ORDER BY rowid DESC LIMIT 1")
+    suspend fun getLastInvoiceOfCustomer(customerId: Long): InvoiceData?
 
     @Query("SELECT invoiceNumber FROM invoices")
     fun getAllInvoiceNumbers(): Flow<List<String>>
 
+    /** Rechnungen mit Positionen im Jahr [year]; [customerId] `null` heißt: alle Kunden. */
     @Transaction
     @Query("""
-        SELECT DISTINCT i.* FROM invoices i 
-        JOIN invoice_entries e ON i.invoiceNumber = e.invoiceNumber 
+        SELECT DISTINCT i.* FROM invoices i
+        JOIN invoice_entries e ON i.invoiceNumber = e.invoiceNumber
         WHERE e.date LIKE '%.' || :year
+          AND (:customerId IS NULL OR i.customerId = :customerId)
     """)
-    fun getInvoicesWithEntriesByYear(year: String): Flow<List<InvoiceWithEntries>>
+    fun getInvoicesWithEntriesByYear(year: String, customerId: Long?): Flow<List<InvoiceWithEntries>>
+}
+
+@Dao
+interface CustomerDao {
+    /** Alle Kunden, aktive zuerst, dann alphabetisch. */
+    @Query(
+        "SELECT * FROM customers ORDER BY archived, nameOrOrga COLLATE NOCASE, firstName COLLATE NOCASE"
+    )
+    fun getAllCustomers(): Flow<List<Customer>>
+
+    @Query("SELECT * FROM customers WHERE id = :id")
+    suspend fun getCustomer(id: Long): Customer?
+
+    /** Legt an (`id = 0`) oder ändert; liefert die id. Kein `REPLACE` — siehe [InvoiceDao.insertInvoice]. */
+    @Upsert
+    suspend fun upsertCustomer(customer: Customer): Long
+
+    @Query("SELECT COUNT(*) FROM invoices WHERE customerId = :id")
+    suspend fun countInvoices(id: Long): Int
+
+    /** Nur für Kunden ohne Rechnungen; sonst verweigert der Fremdschlüssel. */
+    @Query("DELETE FROM customers WHERE id = :id")
+    suspend fun deleteCustomer(id: Long)
 }
 
 @Dao
@@ -79,7 +120,7 @@ interface CompanyDao {
  *
  * Room-KMP kennt kein `clearAllTables()`; die Tabellen werden deshalb einzeln geleert.
  * Die Reihenfolge ist nicht beliebig: die Positionen hängen per Fremdschlüssel an den
- * Rechnungen und müssen zuerst weg.
+ * Rechnungen, die Rechnungen an den Kunden.
  */
 @Dao
 interface MaintenanceDao {
@@ -95,10 +136,14 @@ interface MaintenanceDao {
     @Query("DELETE FROM company_data")
     suspend fun deleteAllCompanyData()
 
+    @Query("DELETE FROM customers")
+    suspend fun deleteAllCustomers()
+
     @Transaction
     suspend fun clearAllTables() {
         deleteAllEntries()
         deleteAllInvoices()
+        deleteAllCustomers()
         deleteAllHiddenSubjects()
         deleteAllCompanyData()
     }
@@ -109,7 +154,7 @@ interface MaintenanceDao {
  * Sicherungen dagegen, damit eine Datei aus einer neueren App-Version nicht zu
  * einem Absturz beim Start fuehrt.
  */
-const val DATABASE_VERSION = 11
+const val DATABASE_VERSION = 12
 
 @Database(
     entities = [
@@ -117,6 +162,7 @@ const val DATABASE_VERSION = 11
         InvoiceEntry::class,
         CompanyData::class,
         HiddenSubject::class,
+        Customer::class,
     ],
     version = DATABASE_VERSION,
     exportSchema = true
@@ -126,6 +172,7 @@ const val DATABASE_VERSION = 11
 abstract class AppDatabase : RoomDatabase() {
     abstract fun invoiceDao(): InvoiceDao
     abstract fun companyDao(): CompanyDao
+    abstract fun customerDao(): CustomerDao
     abstract fun maintenanceDao(): MaintenanceDao
 }
 

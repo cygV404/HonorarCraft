@@ -22,12 +22,17 @@ class DesktopDatabaseTest {
         return createDesktopDatabase(file.toAbsolutePath().toString()) to file
     }
 
+    /** Rechnungen brauchen einen Kunden (Fremdschlüssel). */
+    private suspend fun AppDatabase.mitKunde(): AppDatabase = also {
+        customerDao().upsertCustomer(Customer(id = 1, nameOrOrga = "Testkunde"))
+    }
+
     @Test
     fun legtRechnungMitPositionenAnUndRechnetDieSummen() = runTest {
         val (db, file) = newDatabase()
         try {
-            val dao = db.invoiceDao()
-            dao.insertInvoice(InvoiceData(invoiceNumber = "2026-001"))
+            val dao = db.mitKunde().invoiceDao()
+            dao.insertInvoice(InvoiceData(invoiceNumber = "2026-001", customerId = 1))
             dao.insertEntry(
                 InvoiceEntry(
                     invoiceNumber = "2026-001",
@@ -56,8 +61,8 @@ class DesktopDatabaseTest {
     fun liefertFachvorschlaegeUndBlendetSieAus() = runTest {
         val (db, _) = newDatabase()
         try {
-            val dao = db.invoiceDao()
-            dao.insertInvoice(InvoiceData(invoiceNumber = "2026-002"))
+            val dao = db.mitKunde().invoiceDao()
+            dao.insertInvoice(InvoiceData(invoiceNumber = "2026-002", customerId = 1))
             listOf("Mathematik", "Mathematik", "Deutsch").forEach { subject ->
                 dao.insertEntry(
                     InvoiceEntry(
@@ -90,9 +95,9 @@ class DesktopDatabaseTest {
     fun findetRechnungenUeberDasJahrImDatum() = runTest {
         val (db, _) = newDatabase()
         try {
-            val dao = db.invoiceDao()
-            dao.insertInvoice(InvoiceData(invoiceNumber = "2025-009"))
-            dao.insertInvoice(InvoiceData(invoiceNumber = "2026-003"))
+            val dao = db.mitKunde().invoiceDao()
+            dao.insertInvoice(InvoiceData(invoiceNumber = "2025-009", customerId = 1))
+            dao.insertInvoice(InvoiceData(invoiceNumber = "2026-003", customerId = 1))
             dao.insertEntry(
                 InvoiceEntry(
                     invoiceNumber = "2025-009",
@@ -110,7 +115,7 @@ class DesktopDatabaseTest {
                 )
             )
 
-            val year2026 = dao.getInvoicesWithEntriesByYear("2026").first()
+            val year2026 = dao.getInvoicesWithEntriesByYear("2026", null).first()
             assertEquals(listOf("2026-003"), year2026.map { it.invoice.invoiceNumber })
         } finally {
             db.close()

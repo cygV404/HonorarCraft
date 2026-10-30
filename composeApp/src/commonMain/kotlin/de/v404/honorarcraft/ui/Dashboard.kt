@@ -64,6 +64,7 @@ import de.v404.honorarcraft.shared.MainViewModel
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.Constants
 import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.InvoiceFormat
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
 import de.v404.honorarcraft.shared.data.formatInvoice
@@ -79,8 +80,13 @@ fun DashboardScreen(
     val rawInvoiceNumber by mainViewModel.selectedInvoiceNumber.collectAsState()
     val formattedInvoiceNumber by mainViewModel.formattedInvoiceNumber.collectAsState()
     val invoiceFormat by mainViewModel.invoiceFormat.collectAsState()
+    val kunden by mainViewModel.customers.collectAsState()
+    val kundenFilter by mainViewModel.dashboardCustomerFilter.collectAsState()
 
     DashboardContent(
+        kunden = kunden,
+        kundenFilter = kundenFilter,
+        onKundenFilter = { mainViewModel.setDashboardCustomerFilter(it) },
         totalSum = yearlyRevenueState,
         dashboardYear = dashboardYear,
         invoiceYear = invoiceYear,
@@ -99,6 +105,9 @@ fun DashboardScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardContent(
+    kunden: List<Customer>,
+    kundenFilter: Long?,
+    onKundenFilter: (Long?) -> Unit,
     totalSum: BigDecimal,
     dashboardYear: Int,
     invoiceYear: Int,
@@ -263,6 +272,13 @@ fun DashboardContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                KundenFilter(
+                    kunden = kunden,
+                    filter = kundenFilter,
+                    onFilter = onKundenFilter,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
                 DashboardControlCard(
                     title = "Jahresumsatz $dashboardYear",
                     value = "$yearlyRevenueFormatted €",
@@ -381,6 +397,9 @@ fun DashboardControlCard(
 fun DashboardPreview() {
     HonorarCraftTheme {
         DashboardContent(
+            kunden = emptyList(),
+            kundenFilter = null,
+            onKundenFilter = {},
             totalSum = BigDecimal("12500.00"),
             dashboardYear = 2026,
             invoiceYear = 2026,

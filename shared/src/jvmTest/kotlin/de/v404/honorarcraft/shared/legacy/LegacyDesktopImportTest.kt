@@ -142,9 +142,30 @@ class LegacyDesktopImportTest {
         assertEquals("Dobrodolac", firma.billerSecondName)
         assertEquals("DE12 3456 7810 1112 1314 15", firma.billerIban)
         assertEquals("12/345/678/912", firma.taxNumber)
-        // Unverschlüsselte Felder kommen unverändert durch.
-        assertEquals("Kolping Berufsbildung gGmbH", firma.customerSecondNameOrOrga)
         assertEquals(BigDecimal("23.00"), firma.rate)
+    }
+
+    @Test
+    fun `der alte Empfaenger wird Kunde und die Rechnungen haengen an ihm`() = test {
+        writeLegacyData()
+        LegacyDesktopImport.run(folder, db, crypto, LocalDate.of(2026, 9, 13))
+
+        val kunden = db.customerDao().getAllCustomers().first()
+        assertEquals(1, kunden.size)
+        val kunde = kunden.single()
+        assertEquals("Kolping Berufsbildung gGmbH", kunde.nameOrOrga)
+        assertEquals("Stuttgart", kunde.cityName)
+
+        val nummern = db.invoiceDao().getAllInvoiceNumbers().first()
+        assertTrue(nummern.isNotEmpty())
+        for (nummer in nummern) {
+            val rechnung = db.invoiceDao().getInvoice(nummer)!!
+            assertEquals(kunde.id, rechnung.customerId)
+            // Die drei Angaben wechseln je Rechnung und landen deshalb an jeder Rechnung.
+            assertEquals("Biberach - Ehingen", rechnung.eduCenter)
+            assertEquals("40 - 381", rechnung.locationNr)
+            assertEquals("AsA flex", rechnung.schoolType)
+        }
     }
 
     @Test

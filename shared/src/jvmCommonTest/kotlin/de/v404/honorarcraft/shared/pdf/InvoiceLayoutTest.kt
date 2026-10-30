@@ -1,6 +1,7 @@
 package de.v404.honorarcraft.shared.pdf
 
 import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.InvoiceData
 import de.v404.honorarcraft.shared.data.InvoiceEntry
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
@@ -22,14 +23,23 @@ class InvoiceLayoutTest {
     /** Feste Breite je Zeichen: das Layout darf nicht von echten Schriftmetriken abhängen. */
     private val measurer = TextMeasurer { text, _ -> text.length * 5f }
 
-    private val firma = CompanyData(
+    private val kunde = Customer(
+        id = 1,
+        nameOrOrga = "Kolping Berufsbildung gGmbH",
+        plz = "70010",
+        cityName = "Stuttgart",
+        mailBox = "10 11 61",
+    )
+
+    private val rechnung = InvoiceData(
+        invoiceNumber = "13",
+        customerId = 1,
         eduCenter = "Biberach - Ehingen",
         locationNr = "40 - 381",
         schoolType = "AsA flex",
-        customerSecondNameOrOrga = "Kolping Berufsbildung gGmbH",
-        customerPlz = "70010",
-        customerCityName = "Stuttgart",
-        customerMailBox = "10 11 61",
+    )
+
+    private val firma = CompanyData(
         billerSecondName = "Mustermann",
         billerFirstName = "Max",
         billerStreetName = "Musterstraße",
@@ -53,7 +63,7 @@ class InvoiceLayoutTest {
         )
 
     private fun baue(vararg positionen: InvoiceEntry) = InvoiceLayout.build(
-        invoice = InvoiceWithEntries(InvoiceData("13"), positionen.toList()),
+        invoice = InvoiceWithEntries(rechnung, positionen.toList(), kunde),
         company = firma,
         formattedInvoiceNumber = "13",
         measurer = measurer,
@@ -145,8 +155,9 @@ class InvoiceLayoutTest {
     fun `mit Unterschrift steht das Datum unten bei der Ortsangabe`() {
         val modell = InvoiceLayout.build(
             invoice = InvoiceWithEntries(
-                InvoiceData("13"),
+                rechnung,
                 listOf(position("09.01.2026", "1.0", "Mathematik")),
+                kunde,
             ),
             company = firma.copy(signaturePath = "/pfad/unterschrift.png"),
             formattedInvoiceNumber = "13",

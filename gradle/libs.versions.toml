@@ -1,9 +1,9 @@
 [versions]
 # Die eine Stelle fuer die Programmversion. Sie speist packageVersion (Desktop),
 # versionName (Android) und die im Info-Dialog angezeigte Version.
-appVersion = "2.0"
+appVersion = "2.1"
 # Muss bei jedem Play-Store-Release hochgezaehlt werden.
-androidVersionCode = "6"
+androidVersionCode = "7"
 
 # Kotlin und Compose sind an die Android-App angeglichen (siehe KMP_PLAN.md, Phase 1).
 kotlin = "2.4.10"
@@ -58,6 +58,7 @@ compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", v
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
 compose-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
+compose-uiTest = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 compose-materialIconsExtended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 

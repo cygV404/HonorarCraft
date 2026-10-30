@@ -4,6 +4,8 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import de.v404.honorarcraft.shared.data.AppDatabase
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
+import de.v404.honorarcraft.shared.data.DATABASE_VERSION
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.InvoiceData
 import de.v404.honorarcraft.shared.data.InvoiceEntry
 import de.v404.honorarcraft.shared.data.createDesktopDatabase
@@ -42,7 +44,8 @@ class BackupTest {
 
     private suspend fun fuelleDatenbank(nummer: String) {
         val dao = db!!.invoiceDao()
-        dao.insertInvoice(InvoiceData(nummer))
+        db!!.customerDao().upsertCustomer(Customer(id = 1, nameOrOrga = "Testkunde"))
+        dao.insertInvoice(InvoiceData(nummer, customerId = 1))
         dao.insertEntry(
             InvoiceEntry(
                 invoiceNumber = nummer,
@@ -69,7 +72,7 @@ class BackupTest {
 
         // Nach dem WAL-Checkpoint muss die Position wirklich in der Datei stehen,
         // nicht nur im Write-Ahead-Log.
-        db!!.invoiceDao().deleteInvoice(InvoiceData("07"))
+        db!!.invoiceDao().deleteInvoice("07")
         assertEquals(emptyList(), db!!.invoiceDao().getAllInvoiceNumbers().first())
 
         val version = Backup.import(
@@ -78,7 +81,7 @@ class BackupTest {
             source = sicherung.inputStream(),
             closeDatabase = { db!!.close() },
         ).getOrThrow()
-        assertEquals(11, version)
+        assertEquals(DATABASE_VERSION, version)
 
         neuOeffnen()
         assertEquals(listOf("07"), db!!.invoiceDao().getAllInvoiceNumbers().first())
@@ -175,6 +178,8 @@ class BackupTest {
             rechnung?.entries?.first()?.rate,
             "Die Position muss den Satz ihrer Rechnung geerbt haben",
         )
+        // Ab Schema 12 hängt jede Rechnung an einem Kunden; ohne Firmendaten ist es ein Platzhalter.
+        assertEquals("Kunde 1", rechnung?.customer?.nameOrOrga)
         altOrdner.toFile().deleteRecursively()
     }
 

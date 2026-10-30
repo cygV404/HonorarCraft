@@ -77,6 +77,8 @@ import java.util.TimeZone
 import de.v404.honorarcraft.shared.MainViewModel
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.Customer
+import de.v404.honorarcraft.shared.data.InvoiceDetails
 import de.v404.honorarcraft.shared.data.InvoiceEntry
 import de.v404.honorarcraft.shared.data.InvoiceFormat
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
@@ -109,7 +111,16 @@ fun CreateInvoiceScreen(
     val lastAddedEntry by mainViewModel.lastAddedEntry.collectAsState()
     val showConfirmation by mainViewModel.showEntryConfirmation.collectAsState()
 
+    val kunden by mainViewModel.customers.collectAsState()
+    val kunde by mainViewModel.selectedCustomer.collectAsState()
+    val angaben by mainViewModel.invoiceDetails.collectAsState()
+
     CreateInvoiceContent(
+        kunden = kunden,
+        kunde = kunde,
+        onKundeWaehlen = { mainViewModel.selectCustomer(it) },
+        angaben = angaben,
+        onAngabenAendern = { mainViewModel.updateInvoiceDetails(it) },
         displayInvoiceNumber = formattedInvoiceNumber,
         allInvoiceNumbers = allInvoiceNumbers,
         invoiceFormat = invoiceFormat,
@@ -134,6 +145,11 @@ fun CreateInvoiceScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CreateInvoiceContent(
+    kunden: List<Customer>,
+    kunde: Customer?,
+    onKundeWaehlen: (Long) -> Unit,
+    angaben: InvoiceDetails,
+    onAngabenAendern: (InvoiceDetails) -> Unit,
     displayInvoiceNumber: String,
     allInvoiceNumbers: List<String>,
     invoiceFormat: InvoiceFormat,
@@ -272,6 +288,12 @@ fun CreateInvoiceContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    KundenAuswahl(
+                        kunden = kunden,
+                        ausgewaehlt = kunde,
+                        onAuswahl = onKundeWaehlen,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
                             value = datum,
@@ -403,6 +425,12 @@ fun CreateInvoiceContent(
                             }
                         }
                     }
+
+                    RechnungsAngaben(
+                        details = angaben,
+                        onAenderung = onAngabenAendern,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 
@@ -520,6 +548,11 @@ fun CreateInvoiceContent(
 fun CreateInvoicePreview() {
     HonorarCraftTheme {
         CreateInvoiceContent(
+            kunden = listOf(Customer(id = 1, nameOrOrga = "Bildungswerk")),
+            kunde = Customer(id = 1, nameOrOrga = "Bildungswerk"),
+            onKundeWaehlen = {},
+            angaben = InvoiceDetails("Ulm", "42-362", "Nachhilfe"),
+            onAngabenAendern = {},
             displayInvoiceNumber = "1",
             allInvoiceNumbers = listOf("1", "2"),
             invoiceFormat = InvoiceFormat.NUMBER,

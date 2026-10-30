@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import de.v404.honorarcraft.shared.data.AppDatabase
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.Constants
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.HiddenSubject
 import de.v404.honorarcraft.shared.data.InvoiceData
 import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.data.InvoiceDetails
 import de.v404.honorarcraft.shared.data.InvoiceFormat
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import de.v404.honorarcraft.shared.data.details
 import de.v404.honorarcraft.shared.data.formatInvoice
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -52,6 +56,7 @@ class MainViewModel(
 ) : ViewModel() {
     private val invoiceDao = database.invoiceDao()
     private val companyDao = database.companyDao()
+    private val customerDao = database.customerDao()
     private val maintenanceDao = database.maintenanceDao()
 
     /**
@@ -159,10 +164,23 @@ class MainViewModel(
 
     private var confirmationJob: Job? = null
 
-    // Yearly Revenue - linked to _dashboardYear
-    val yearlyRevenue: StateFlow<BigDecimal> = _dashboardYear
-        .flatMapLatest { year ->
-            invoiceDao.getInvoicesWithEntriesByYear(year.toString())
+    /** Kundenfilter der Übersicht; `null` heißt: alle Kunden. */
+    private val _dashboardCustomerFilter = MutableStateFlow(
+        settings.getString(SettingsKeys.DASHBOARD_CUSTOMER_FILTER, "").toLongOrNull()
+    )
+    val dashboardCustomerFilter: StateFlow<Long?> = _dashboardCustomerFilter.asStateFlow()
+
+    fun setDashboardCustomerFilter(customerId: Long?) {
+        _dashboardCustomerFilter.value = customerId
+        settings.putString(SettingsKeys.DASHBOARD_CUSTOMER_FILTER, customerId?.toString() ?: "")
+    }
+
+    // Jahresumsatz für das Jahr und den Kundenfilter der Übersicht
+    val yearlyRevenue: StateFlow<BigDecimal> = combine(_dashboardYear, _dashboardCustomerFilter) { year, kunde ->
+        year to kunde
+    }
+        .flatMapLatest { (year, kunde) ->
+            invoiceDao.getInvoicesWithEntriesByYear(year.toString(), kunde)
                 .map { invoices -> year to invoices }
         }
         .map { (year, invoices) ->
@@ -187,7 +205,123 @@ class MainViewModel(
     // Current Invoice with Entries - reactive to formattedInvoiceNumber
     val currentInvoiceWithEntries: StateFlow<InvoiceWithEntries?> = formattedInvoiceNumber
         .flatMapLatest { number -> invoiceDao.getInvoiceWithEntries(number) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Alle Kunden, aktive zuerst. Archivierte bleiben für Übersicht und alte Rechnungen drin. */
+    val customers: StateFlow<List<Customer>> = customerDao.getAllCustomers()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _selectedCustomerId = MutableStateFlow(
+        settings.getString(SettingsKeys.SELECTED_CUSTOMER_ID, "").toLongOrNull()
+    )
+
+    /**
+     * Der Kunde der angezeigten Rechnung. Existiert sie noch nicht, der zuletzt gewählte
+     * aktive Kunde — und ohne Wahl der erste aktive. `null` nur, solange es keinen gibt.
+     */
+    val selectedCustomer: StateFlow<Customer?> = combine(
+        customers, _selectedCustomerId, currentInvoiceWithEntries
+    ) { liste, id, rechnung ->
+        rechnung?.customer
+            ?: liste.firstOrNull { it.id == id && !it.archived }
+            ?: liste.firstOrNull { !it.archived }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Vorbelegung der Rechnungsangaben, solange die Rechnung noch nicht angelegt ist. */
+    private val _detailsDraft = MutableStateFlow(InvoiceDetails())
+
+    /** Bildungszentrum, Standortnummer und Schulart der angezeigten Rechnung. */
+    val invoiceDetails: StateFlow<InvoiceDetails> = combine(
+        currentInvoiceWithEntries, _detailsDraft
+    ) { rechnung, entwurf ->
+        rechnung?.invoice?.details ?: entwurf
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, InvoiceDetails())
+
+    init {
+        // Wer eine bestehende Rechnung aufruft, erfasst danach für deren Kunden weiter.
+        viewModelScope.launch {
+            currentInvoiceWithEntries.collect { rechnung ->
+                val kunde = rechnung?.customer ?: return@collect
+                if (!kunde.archived && kunde.id != _selectedCustomerId.value) {
+                    merkeKunde(kunde.id)
+                }
+            }
+        }
+        // Eine neue Rechnung übernimmt die Angaben der letzten Rechnung desselben Kunden.
+        viewModelScope.launch {
+            combine(selectedCustomer, currentInvoiceWithEntries) { kunde, rechnung ->
+                kunde?.id to (rechnung == null)
+            }.distinctUntilChanged().collect { (kundeId, neu) ->
+                if (neu && kundeId != null) {
+                    _detailsDraft.value =
+                        invoiceDao.getLastInvoiceOfCustomer(kundeId)?.details ?: InvoiceDetails()
+                }
+            }
+        }
+    }
+
+    private fun merkeKunde(id: Long?) {
+        _selectedCustomerId.value = id
+        settings.putString(SettingsKeys.SELECTED_CUSTOMER_ID, id?.toString() ?: "")
+    }
+
+    /**
+     * Wählt den Kunden zum Erfassen. Ist die angezeigte Rechnung schon angelegt, wechselt sie
+     * mit — so lässt sich eine falsch zugeordnete Rechnung umhängen.
+     */
+    fun selectCustomer(id: Long) {
+        merkeKunde(id)
+        val rechnung = currentInvoiceWithEntries.value?.invoice ?: return
+        if (rechnung.customerId != id) {
+            viewModelScope.launch { invoiceDao.updateInvoice(rechnung.copy(customerId = id)) }
+        }
+    }
+
+    /** Legt einen Kunden an (`id = 0`) oder ändert ihn. Ein neuer Kunde wird gleich gewählt. */
+    fun saveCustomer(customer: Customer) {
+        viewModelScope.launch {
+            val id = customerDao.upsertCustomer(customer)
+            if (customer.id == 0L && id > 0) merkeKunde(id)
+        }
+    }
+
+    fun setCustomerArchived(id: Long, archived: Boolean) {
+        viewModelScope.launch {
+            val kunde = customerDao.getCustomer(id) ?: return@launch
+            customerDao.upsertCustomer(kunde.copy(archived = archived))
+        }
+    }
+
+    /** Löscht einen Kunden ohne Rechnungen; mit Rechnungen bleibt nur das Archivieren. */
+    fun deleteCustomer(id: Long) {
+        viewModelScope.launch {
+            if (customerDao.countInvoices(id) > 0) {
+                notifyUser("Der Kunde hat Rechnungen und kann nur archiviert werden.")
+                return@launch
+            }
+            customerDao.deleteCustomer(id)
+            if (_selectedCustomerId.value == id) merkeKunde(null)
+            if (_dashboardCustomerFilter.value == id) setDashboardCustomerFilter(null)
+        }
+    }
+
+    /** Ändert die Rechnungsangaben; vor dem ersten Eintrag nur im Entwurf. */
+    fun updateInvoiceDetails(details: InvoiceDetails) {
+        val rechnung = currentInvoiceWithEntries.value?.invoice
+        if (rechnung == null) {
+            _detailsDraft.value = details
+            return
+        }
+        viewModelScope.launch {
+            invoiceDao.updateInvoice(
+                rechnung.copy(
+                    eduCenter = details.eduCenter,
+                    locationNr = details.locationNr,
+                    schoolType = details.schoolType,
+                )
+            )
+        }
+    }
 
     // All available invoice numbers for dropdowns
     val allInvoiceNumbers: StateFlow<List<String>> = invoiceDao.getAllInvoiceNumbers()
@@ -348,13 +482,28 @@ class MainViewModel(
             return
         }
 
+        val kunde = selectedCustomer.value
+        if (kunde == null) {
+            notifyUser("Bitte zuerst unter „Daten“ einen Kunden anlegen.")
+            return
+        }
+
         viewModelScope.launch {
             val existingInvoice = invoiceDao.getInvoice(number)
             val cd = companyDao.getCompanyData().first()
-            val rate = cd?.rate ?: Constants.DEFAULT_RATE
+            val rate = kunde.rate ?: cd?.rate ?: Constants.DEFAULT_RATE
 
             if (existingInvoice == null) {
-                invoiceDao.insertInvoice(InvoiceData(invoiceNumber = number))
+                val details = _detailsDraft.value
+                invoiceDao.insertInvoice(
+                    InvoiceData(
+                        invoiceNumber = number,
+                        customerId = kunde.id,
+                        eduCenter = details.eduCenter,
+                        locationNr = details.locationNr,
+                        schoolType = details.schoolType,
+                    )
+                )
             }
 
             val entry = InvoiceEntry(
@@ -391,7 +540,7 @@ class MainViewModel(
 
     fun deleteInvoice(invoiceNumber: String) {
         viewModelScope.launch {
-            invoiceDao.deleteInvoice(InvoiceData(invoiceNumber))
+            invoiceDao.deleteInvoice(invoiceNumber)
             if (_selectedInvoiceNumber.value == invoiceNumber) {
                 setSelectedInvoiceNumber("1")
             }
@@ -415,6 +564,9 @@ class MainViewModel(
                 _selectedInvoiceNumber.value = "1"
                 _invoiceFormat.value = InvoiceFormat.NUMBER
                 _themeMode.value = ThemeMode.SYSTEM
+                _selectedCustomerId.value = null
+                _dashboardCustomerFilter.value = null
+                _detailsDraft.value = InvoiceDetails()
 
                 _hasUnsavedChanges.value = false
                 _resetDataWindowTrigger.value += 1

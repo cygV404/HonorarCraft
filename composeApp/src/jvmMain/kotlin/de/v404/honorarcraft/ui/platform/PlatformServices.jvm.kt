@@ -6,6 +6,7 @@ import de.v404.honorarcraft.shared.backup.Backup
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
 import de.v404.honorarcraft.shared.pdf.createInvoicePdf
+import de.v404.honorarcraft.shared.pdf.pdfDateiname
 import de.v404.honorarcraft.shared.data.DesktopDatabase
 import de.v404.honorarcraft.shared.desktopAppDataFolder
 import de.v404.honorarcraft.shared.logError
@@ -102,7 +103,7 @@ class DesktopPlatformServices : PlatformServices {
             ?: File(System.getProperty("user.home"), "Dokumente/Honorarabrechnungen")
         withContext(Dispatchers.IO) {
             ordner.mkdirs()
-            val ziel = File(ordner, "Rechnung_$formattedInvoiceNumber.pdf")
+            val ziel = File(ordner, pdfDateiname(formattedInvoiceNumber, invoice.customer))
             createInvoicePdf(invoice, company, formattedInvoiceNumber, ziel.outputStream())
             ziel.absolutePath
         }

@@ -2,6 +2,7 @@ package de.v404.honorarcraft.shared.legacy
 
 import de.v404.honorarcraft.shared.data.AppDatabase
 import de.v404.honorarcraft.shared.data.CompanyData
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.Constants
 import de.v404.honorarcraft.shared.data.InvoiceData
 import de.v404.honorarcraft.shared.data.InvoiceEntry
@@ -108,16 +109,6 @@ object LegacyDesktopImport {
             companyDao.insertCompanyData(
                 CompanyData(
                     id = 1,
-                    eduCenter = legacyCompany.eduCenter,
-                    locationNr = legacyCompany.locationNr,
-                    schoolType = legacyCompany.schoolType,
-                    customerSecondNameOrOrga = legacyCompany.customerSecondNameOrOrga,
-                    customerFirstName = legacyCompany.customerFirstName,
-                    customerPlz = legacyCompany.customerPlz,
-                    customerCityName = legacyCompany.customerCityName,
-                    customerMailBox = legacyCompany.customerMailBox,
-                    customerStreet = legacyCompany.customerStreet,
-                    customerStreetNumber = legacyCompany.customerStreetNumber,
                     // Diese Felder lagen verschlüsselt in der Datei.
                     billerSecondName = crypto.decrypt(legacyCompany.billerSecondName),
                     billerFirstName = crypto.decrypt(legacyCompany.billerFirstName),
@@ -143,6 +134,30 @@ object LegacyDesktopImport {
             f.isFile && f.name.startsWith("invoice_") && f.name.endsWith(".json")
         }.orEmpty().sortedBy { it.name }
 
+        // --- Der eine Empfänger der alten Fassung wird ein Kunde ---------------------
+        // Wie in Migration 11 → 12: nur anlegen, wenn es Rechnungen oder Empfängerdaten gibt.
+        val empfaenger = legacyCompany?.let {
+            Customer(
+                nameOrOrga = it.customerSecondNameOrOrga,
+                firstName = it.customerFirstName,
+                street = it.customerStreet,
+                streetNumber = it.customerStreetNumber,
+                plz = it.customerPlz,
+                mailBox = it.customerMailBox,
+                cityName = it.customerCityName,
+            )
+        } ?: Customer()
+        val hatEmpfaengerdaten = with(empfaenger) {
+            listOf(nameOrOrga, firstName, street, streetNumber, plz, mailBox, cityName)
+                .any { it.isNotBlank() }
+        }
+        val customerId: Long? = if (hatEmpfaengerdaten || invoiceFiles.isNotEmpty()) {
+            val benannt = if (empfaenger.nameOrOrga.isBlank() && empfaenger.firstName.isBlank()) {
+                empfaenger.copy(nameOrOrga = "Kunde 1")
+            } else empfaenger
+            database.customerDao().upsertCustomer(benannt)
+        } else null
+
         for (file in invoiceFiles) {
             val number = file.name.removePrefix("invoice_").removeSuffix(".json").trim()
             if (number.isEmpty()) continue
@@ -150,7 +165,16 @@ object LegacyDesktopImport {
             val entries = runCatching { json.decodeFromString<List<LegacyEntry>>(file.readText()) }
                 .getOrDefault(emptyList())
 
-            invoiceDao.insertInvoice(InvoiceData(invoiceNumber = number))
+            invoiceDao.insertInvoice(
+                InvoiceData(
+                    invoiceNumber = number,
+                    // Gibt es Rechnungsdateien, gibt es auch den Kunden (siehe oben).
+                    customerId = customerId!!,
+                    eduCenter = legacyCompany?.eduCenter.orEmpty(),
+                    locationNr = legacyCompany?.locationNr.orEmpty(),
+                    schoolType = legacyCompany?.schoolType.orEmpty(),
+                )
+            )
             invoiceCount++
 
             for (entry in entries) {

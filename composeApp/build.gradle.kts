@@ -41,6 +41,11 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        jvmTest.dependencies {
+            // Oberflächentests ohne Bildschirm, mit echter Datenbank und echtem ViewModel.
+            implementation(libs.compose.uiTest)
+            implementation(libs.kotlinx.coroutinesTest)
+        }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)

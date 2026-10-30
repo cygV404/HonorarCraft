@@ -1,6 +1,6 @@
 # Mehrere Kunden — Arbeitsplan
 
-Stand: 30.10.2026. Entscheidungen getroffen, noch nichts umgesetzt.
+Stand: 30.10.2026. Umgesetzt in Version 2.1 — offen ist nur die Abnahme auf echten Geräten.
 
 ## Ziel
 
@@ -103,73 +103,87 @@ Desktop und Android **gemeinsam** als 2.1 ausliefern.
 
 ### Phase 1 — Datenschicht (`:shared`)
 
-- [ ] Entity `Customer`, `CustomerDao` (aktive als `Flow`, alle inkl. archivierter,
+- [x] Entity `Customer`, `CustomerDao` (aktive als `Flow`, alle inkl. archivierter,
       einfügen/ändern, archivieren, löschen nur ohne Rechnungen).
-- [ ] `InvoiceData` um `customerId`, `eduCenter`, `locationNr`, `schoolType`; `CompanyData`
+- [x] `InvoiceData` um `customerId`, `eduCenter`, `locationNr`, `schoolType`; `CompanyData`
       ohne die verschobenen Felder.
-- [ ] `InvoiceWithEntries` um den Kunden ergänzen (`@Relation`), damit PDF und Übersicht
+- [x] `InvoiceWithEntries` um den Kunden ergänzen (`@Relation`), damit PDF und Übersicht
       ihn ohne zweite Abfrage haben.
-- [ ] Abfragen für die Übersicht mit optionalem Kundenfilter
+- [x] Abfragen für die Übersicht mit optionalem Kundenfilter
       (`getInvoicesWithEntriesByYear(year, customerId: Long?)`).
-- [ ] Abfrage „letzte Rechnung eines Kunden" für die Vorschlagswerte aus Entscheidung 2.
-- [ ] `MIGRATION_11_12` + Schema-Export.
-- [ ] `MaintenanceDao.clearAllTables()` um `customers` ergänzen (Reihenfolge: Positionen,
+- [x] Abfrage „letzte Rechnung eines Kunden" für die Vorschlagswerte aus Entscheidung 2.
+- [x] `MIGRATION_11_12` + Schema-Export.
+- [x] `MaintenanceDao.clearAllTables()` um `customers` ergänzen (Reihenfolge: Positionen,
       Rechnungen, **dann** Kunden).
-- [ ] Tests (`jvmTest`): Migration 11→12 mit Rechnungen samt Positionen — alle Positionen
+- [x] Tests (`jvmTest`): Migration 11→12 mit Rechnungen samt Positionen — alle Positionen
       sind danach noch da, hängen an Kunde 1, Empfänger- und Rechnungsangaben stimmen;
       Migration auf leerer Datenbank; Kette 3→12; `BackupTest` mit einer Sicherung aus
       Version 11.
 
 ### Phase 2 — ViewModel
 
-- [ ] `customers: StateFlow<List<Customer>>`, `selectedCustomer`, `selectCustomer(id)`,
+- [x] `customers: StateFlow<List<Customer>>`, `selectedCustomer`, `selectCustomer(id)`,
       `saveCustomer(customer)`, `archiveCustomer(id)`.
-- [ ] Rechnungsangaben (Bildungszentrum, Standortnummer, Schulart) der aktuellen Rechnung
+- [x] Rechnungsangaben (Bildungszentrum, Standortnummer, Schulart) der aktuellen Rechnung
       lesen und ändern; bei neuer Rechnung aus der letzten Rechnung des Kunden vorbelegen.
-- [ ] `addEntryFromForm()`: neue Rechnung mit `customerId` des aktiven Kunden; Satz aus
+- [x] `addEntryFromForm()`: neue Rechnung mit `customerId` des aktiven Kunden; Satz aus
       `customer.rate ?: company.rate`.
-- [ ] `setSelectedInvoiceNumber()`: gehört die Rechnung einem anderen Kunden, aktiven Kunden
+- [x] `setSelectedInvoiceNumber()`: gehört die Rechnung einem anderen Kunden, aktiven Kunden
       umschalten.
-- [ ] Hinzufügen ohne aktiven Kunden verhindern (Meldung „Bitte zuerst einen Kunden anlegen").
-- [ ] `dashboardCustomerFilter: StateFlow<Long?>` (`null` = alle), in `Settings` gemerkt;
+- [x] Hinzufügen ohne aktiven Kunden verhindern (Meldung „Bitte zuerst einen Kunden anlegen").
+- [x] `dashboardCustomerFilter: StateFlow<Long?>` (`null` = alle), in `Settings` gemerkt;
       `yearlyRevenue` und alle anderen Übersichtswerte hängen daran.
-- [ ] Tests in `MainViewModelTest`: Kundenwechsel, Satzvorgabe, Rechnung wechselt Kunden mit,
+- [x] Tests in `MainViewModelTest`: Kundenwechsel, Satzvorgabe, Rechnung wechselt Kunden mit,
       Vorbelegung der Rechnungsangaben, Übersichtsfilter.
 
 ### Phase 3 — PDF
 
-- [ ] `InvoiceLayout.build(invoice, company, customer, …)` — Empfängerblock aus `customer`,
+- [x] `InvoiceLayout.build(invoice, company, customer, …)` — Empfängerblock aus `customer`,
       Bildungszentrum/Standort/Schulart aus `invoice`.
-- [ ] Gemeinsame Funktion `pdfDateiname(formattedInvoiceNumber, customer)` in `:shared`;
+- [x] Gemeinsame Funktion `pdfDateiname(formattedInvoiceNumber, customer)` in `:shared`;
       `PlatformServices.jvm.kt` und `.android.kt` nutzen sie. Test für verbotene Zeichen.
-- [ ] `InvoiceLayoutTest` anpassen; das Layout darf sich für bestehende Rechnungen nicht
+- [x] `InvoiceLayoutTest` anpassen; das Layout darf sich für bestehende Rechnungen nicht
       ändern.
 
 ### Phase 4 — Oberfläche (`:composeApp`, gemeinsam für beide Plattformen)
 
-- [ ] **Daten-Seite:** Abschnitt „Kundendaten" wird zu „Kunden": Liste der Kunden mit
+- [x] **Daten-Seite:** Abschnitt „Kundendaten" wird zu „Kunden": Liste der Kunden mit
       „Kunde hinzufügen"; Antippen öffnet ein Bearbeiten-Formular mit den Anschriftfeldern
       plus optionalem Honorarsatz und „Archivieren". „Meine Daten", „Finanzdaten" usw.
       bleiben unverändert.
-- [ ] **Erstellen / PDF:** Kundenauswahl (Dropdown) neben der Rechnungsnummer — bei genau
+- [x] **Erstellen / PDF:** Kundenauswahl (Dropdown) neben der Rechnungsnummer — bei genau
       einem Kunden nur als Beschriftung. Darunter die drei Rechnungsangaben
       (Bildungszentrum, Standortnummer, Schulart/Maßnahme), vorbelegt und änderbar.
-- [ ] **Übersicht:** Kundenfilter oben („Alle Kunden" + aktive Kunden + archivierte mit
+- [x] **Übersicht:** Kundenfilter oben („Alle Kunden" + aktive Kunden + archivierte mit
       Umsatz im gewählten Jahr); alle Werte der Übersicht folgen dem Filter.
-- [ ] Ungespeicherte Änderungen im Kundenformular über den bestehenden
+- [x] Ungespeicherte Änderungen im Kundenformular über den bestehenden
       `hasUnsavedChanges`-Mechanismus abfangen.
-- [ ] Schmal (Handy) und breit (Desktop) prüfen.
+- [x] Schmal (Handy) und breit (Desktop) prüfen.
 
 ### Phase 5 — Altbestand und Abschluss
 
-- [ ] `LegacyDesktopImport` legt den alten Empfänger als Kunden an und schreibt
+- [x] `LegacyDesktopImport` legt den alten Empfänger als Kunden an und schreibt
       Bildungszentrum/Standort/Schulart an jede übernommene Rechnung;
       `LegacyDesktopImportTest` anpassen.
-- [ ] README (Funktionsliste), CLAUDE.md (Datenschicht, identityHash) nachziehen.
-- [ ] `appVersion` 2.1, `androidVersionCode` 7.
+- [x] README (Funktionsliste), CLAUDE.md (Datenschicht, identityHash) nachziehen.
+- [x] `appVersion` 2.1, `androidVersionCode` 7.
 - [ ] Abnahme: echte 2.0-Datenbank vom Handy und vom Desktop aktualisieren, Rechnungen und
       PDFs vorher/nachher vergleichen; zweiten Kunden anlegen, Rechnung für ihn erzeugen,
       Übersicht filtern; Sicherung zwischen beiden Geräten austauschen.
+
+## Umsetzung — Abweichungen vom Plan
+
+- `InvoiceLayout.build` bekam **keinen** zusätzlichen Kunden-Parameter: `InvoiceWithEntries`
+  bringt den Kunden über `@Relation` selbst mit.
+- Das Kundenformular ist ein modaler Dialog. Abbrechen verwirft, deshalb braucht es den
+  `hasUnsavedChanges`-Mechanismus nicht.
+- Im PDF-Bereich steht der Kunde unter der Rechnungsnummer; gewählt wird er unter „Erstellen".
+  Eine bestehende Rechnung lässt sich dort auf einen anderen Kunden umhängen.
+- Gefunden beim Umbau: `insertInvoice` lief mit `REPLACE`, was bei einer bestehenden Rechnung
+  über das `CASCADE` alle Positionen gelöscht hätte. Jetzt `IGNORE` plus `updateInvoice`.
+- Vorab geprüft: eine Kopie der echten Desktop-Datenbank (10 Rechnungen, 81 Positionen)
+  migriert ohne Verlust — Positionen unverändert, Fremdschlüssel- und Integritätsprüfung `ok`.
+- Neu: Oberflächentests in `composeApp/src/jvmTest`, auch in der CI.
 
 ## Bewusst nicht Teil des Vorhabens
 

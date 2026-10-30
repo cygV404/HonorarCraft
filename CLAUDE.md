@@ -17,9 +17,10 @@ deutsch (`Bereich`, `sofortSchreiben`, …).
 Planungsdokumente im Wurzelverzeichnis:
 - `KMP_PLAN.md` — der abgeschlossene Umbau zu KMP (Version 2.0). Begründungen für Architektur-,
   Datenhaltungs- und Rechenentscheidungen stehen dort; vor Änderungen in diesen Bereichen lesen.
+- `KUNDEN_PLAN.md` — mehrere Kunden (umgesetzt in 2.1); Entscheidungen und Begründungen.
 - `WLAN_PLAN.md` — nächstes Vorhaben: Sicherung über das lokale Netz übertragen (kein Sync).
 
-Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, Version 2.0,
+Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, Version 2.1,
 Paket überall `de.v404.honorarcraft`, `minSdk` 29, `targetSdk` 36, `compileSdk` 37.
 
 ## Befehle
@@ -35,11 +36,17 @@ sind aktiv.
 ./gradlew :androidApp:assembleDebug                        # Android-APK -> androidApp/build/outputs/apk/debug/
 ./gradlew build                                            # alles kompilieren
 
-# Tests liegen nur im :shared-Modul
 ./gradlew :shared:jvmTest                                  # jvmCommonTest + jvmTest gegen den Desktop
 ./gradlew :shared:testAndroidHostTest                      # jvmCommonTest gegen das Android-Target, ohne Emulator
 ./gradlew :shared:jvmTest --tests "de.v404.honorarcraft.shared.data.CalculationTest"
+./gradlew :composeApp:jvmTest                              # Oberflächentests, laufen ohne Bildschirm
+HC_SCREENSHOTS=/pfad ./gradlew :composeApp:jvmTest         # ... und legen dabei Bildschirmfotos ab
 ```
+
+Die Oberflächentests (`composeApp/src/jvmTest`) nutzen `runDesktopComposeUiTest` mit echtem
+`MainViewModel` und echter Datenbank im Temp-Ordner. Felder per `hasSetTextAction() and
+hasText(label)` suchen; hinter einem Dialog liegen oft gleich beschriftete Felder, dann
+zusätzlich `hasAnyAncestor(isDialog())`.
 
 Für Android-Builds muss `local.properties` ein `sdk.dir` enthalten (gitignored; lokal
 `~/Android/Sdk`). Die Plattform heißt im `sdkmanager` `platforms;android-37.0`.
@@ -49,7 +56,7 @@ unterstützt höchstens 9.1.x und verweigert sonst den Gradle-Sync. Anheben erst
 nachzieht — oder wenn das Projekt nach Android Studio umzieht.
 
 Die CI (`.github/workflows/package.yml`) läuft bei Push auf `main`, bei Pull Requests und von
-Hand: erst die beiden Test-Tasks oben, dann parallel das Android-Debug-APK und die
+Hand: erst die drei Test-Tasks oben, dann parallel das Android-Debug-APK und die
 Desktop-Pakete für Ubuntu, Windows und macOS. Ein Android-**Release** baut die CI bewusst nicht —
 der Signierschlüssel liegt nicht im Repo. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter;
 einen lokalen Lint-Task gibt es nicht.
@@ -91,7 +98,7 @@ brauchen ein explizites `dependsOn` auf die KSP-Tasks, sonst bricht `./gradlew b
 
 ### Datenschicht (Room, `shared/.../shared/data/`)
 
-Room 2.8 auf beiden Plattformen, Schemaversion 11, Migrationskette ab 3 in `Migrations.kt`,
+Room 2.8 auf beiden Plattformen, Schemaversion 12, Migrationskette ab 3 in `Migrations.kt`,
 exportierte Schemas unter `shared/schemas/`. Kein `fallbackToDestructiveMigration` — ein
 fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
 
@@ -104,15 +111,27 @@ fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
   `BundledSQLiteDriver`, Datei im Ordner von `desktopAppDataFolder()` (`%APPDATA%/HonorarCraft`,
   `~/Library/Application Support/HonorarCraft`, sonst `~/.honorarcraft`).
 - **Jede Änderung an den Entities verändert den `identityHash` und damit das Schema.** Der
-  Wert für Version 11 ist `ff3c7c472631b050dd51d3586f067f3a` und stimmt mit dem der
-  ausgelieferten Android-App überein — deshalb bleiben bestehende Datenbanken und
-  `.hcbackup`-Dateien lesbar. Ohne neue Migration und neue Version nichts daran ändern.
+  Wert für Version 12 ist `6b190486a38e12a32e765d6bff269eb3` (Version 11, ausgeliefert mit 2.0:
+  `ff3c7c472631b050dd51d3586f067f3a`). Ohne neue Migration und neue Version nichts an den
+  Entities ändern — sonst sind bestehende Datenbanken und `.hcbackup`-Dateien nicht mehr lesbar.
+- **Tabellen:** `company_data` (eine Zeile, der Rechnungssteller), `customers` (Empfänger,
+  optional eigener `rate`, `archived`), `invoices` (`customerId` → `customers` mit `RESTRICT`,
+  dazu `eduCenter`/`locationNr`/`schoolType`, weil die je Rechnung wechseln),
+  `invoice_entries` (`invoiceNumber` → `invoices` mit `CASCADE`), `hidden_subjects`.
+- **Nie `OnConflictStrategy.REPLACE` auf `invoices` oder `customers`:** SQLite ersetzt durch
+  Löschen und Neuanlegen, und das `CASCADE` nähme alle Positionen der Rechnung mit. Deshalb
+  `insertInvoice` mit `IGNORE` plus `updateInvoice`, Kunden über `@Upsert`.
+- **Eine Elterntabelle umbauen** (SQLite kann Spalten und Fremdschlüssel nicht nachträglich
+  ändern): Positionen vorher in eine Hilfstabelle ohne Fremdschlüssel sichern, `DROP`/`RENAME`,
+  zurückspielen — siehe `MIGRATION_5_6` und `MIGRATION_11_12`, jeweils mit Test.
 
 **Sicherung** (`shared/.../backup/Backup.kt`, Endung `.hcbackup`): `export` und `import` arbeiten
 auf beliebigen Streams; der Import prüft die Datei, sichert den alten Stand, rollt bei Fehlern
 zurück und hebt ältere Stände über die Migrationskette. Nach einem Import muss die App neu
 starten (`PlatformServices.restartApp()`), weil die Room-Flows an der geschlossenen Verbindung
-hängen. Sicherungen sind zwischen Android und Desktop austauschbar.
+hängen. Sicherungen sind zwischen Android und Desktop austauschbar — aber nur, wenn beide auf
+derselben Schemaversion sind: eine 2.1-Sicherung lehnt eine 2.0-App ab. Desktop und Android
+deshalb immer gemeinsam veröffentlichen.
 
 ### Geldbeträge und die UE/Stunden-Namensfalle
 
@@ -122,7 +141,8 @@ Nachkommastellen). Der Spaltenname ist Teil des Schemas — nicht umbenennen.
 
 Alle Beträge sind `BigDecimal`. **Gerundet wird einmal am Ende** (`setScale(2, HALF_UP)` auf
 der Gesamtsumme), nicht je Position — `CalculationTest` hält das fest (3 × 1 h zu 23 € =
-92,00 €, nicht 92,01 €). Der Honorarsatz steht je Position (`rate`, Vorgabe 23,00).
+92,00 €, nicht 92,01 €). Der Honorarsatz steht je Position (`rate`); eine neue Position
+bekommt `customer.rate ?: company.rate`.
 Die UE-Spalte im PDF zeigt bewusst gerundete Zwischenwerte; die Summe ist trotzdem exakt.
 
 Rechnungsnummern-Formate (laufend, mit Jahr, mit Jahr und Monat) in `InvoiceNumber.kt`.
@@ -141,6 +161,10 @@ Rechnungsnummern-Formate (laufend, mit Jahr, mit Jahr und Monat) in `InvoiceNumb
   `HonorarCraftApp` als Snackbar gezeigt. Der Flow hat **kein** Replay — ein Sammler muss
   stehen, bevor gemeldet wird.
 - Fehler gehen über `expect fun logError` (Android: Logcat, Desktop: stderr).
+- **Kunden:** `customers`, `selectedCustomer` (= Kunde der angezeigten Rechnung, sonst der
+  gewählte aktive), `invoiceDetails` (Angaben der Rechnung bzw. Entwurf vor dem ersten Eintrag,
+  vorbelegt von der letzten Rechnung des Kunden) und `dashboardCustomerFilter`. Gewählter
+  Kunde und Filter liegen in `Settings`. Ohne Kunden verweigert `addEntryFromForm()`.
 - PDF-Erzeugung und Sicherung sind bewusst **nicht** im ViewModel; sie laufen über
   `PlatformServices` und rufen danach `incrementInvoiceNumber()` bzw. `showMessage(...)`.
 - Um Room-Aufrufe gehört **kein** `withContext(Dispatchers.IO)` — Room legt suspend-Abfragen
@@ -158,6 +182,9 @@ Keine Navigations-Bibliothek. Die Navigation hängt allein an der Fensterbreite:
 Seitenleiste, darunter ein `HorizontalPager` mit Leiste unten — auch auf dem Desktop, wenn das
 Fenster schmal ist.
 
+Die Kunden-Bausteine (Auswahl, Filter, Rechnungsangaben, Liste, Bearbeiten-Dialog) stehen in
+`ui/Kunden.kt`.
+
 Plattformunterschiede laufen über `ui/platform/` mit `expect`/`actual`:
 - `PlatformServices` (Schnittstelle, per `LocalPlatformServices` bereitgestellt) — Datei-Dialoge,
   PDF ablegen, Sicherung, Neustart. Eine Schnittstelle statt `expect object`, weil Android seine
@@ -170,7 +197,9 @@ Plattformunterschiede laufen über `ui/platform/` mit `expect`/`actual`:
 
 `InvoiceLayout.build(...)` erzeugt plattformunabhängig ein `PdfDocumentModel` (absolute
 Koordinaten auf A4); die Renderer zeichnen nur noch: Desktop mit PDFBox, Android mit
-`android.graphics.pdf.PdfDocument` (`expect fun writeInvoicePdf` / `pdfTextMeasurer`). Das Layout
+`android.graphics.pdf.PdfDocument` (`expect fun writeInvoicePdf` / `pdfTextMeasurer`). Den
+Empfänger liest das Layout aus `InvoiceWithEntries.customer`, den Dateinamen bildet
+`pdfDateiname()` (`Rechnung_<nummer>_<kunde>.pdf`) für beide Plattformen. Das Layout
 braucht die Plattform nur zum Messen von Textbreiten. Beide Renderer laden Roboto aus
 `shared/src/{jvmMain,androidMain}/resources/font/` per ClassLoader; fehlt die Datei, fällt der
 Desktop auf Helvetica zurück — dann brechen die Umlaute. `InvoiceLayoutTest` prüft das Layout.
@@ -198,7 +227,7 @@ Die alte Desktop-App speicherte JSON-Dateien (`company.json`, `invoices/`, `tota
 `last_invoice_number.txt`) im selben Datenordner und verschlüsselte Identitätsfelder, IBAN, BIC
 und Steuernummer per AES — Schlüssel als `vault_key` in `java.util.prefs` unter
 `app/accounting/honorarcraft`. `LegacyDesktopImport` übernimmt das beim ersten Start einmalig
-in Room (`LegacyVaultCrypto` entschlüsselt dafür) und benennt den Altbestand in
+in Room (`LegacyVaultCrypto` entschlüsselt dafür, der alte Empfänger wird ein Kunde) und benennt den Altbestand in
 `vor-room-<datum>/` um, statt ihn zu löschen. Manuelle Jahres-Startwerte (Schlüssel `"S"` in
 `totals/`) haben kein Gegenstück in Room und werden nur gemeldet. Seit 2.0 gibt es **keine**
 Feldverschlüsselung mehr; den Preferences-Knoten `app/accounting/honorarcraft` nicht leeren,

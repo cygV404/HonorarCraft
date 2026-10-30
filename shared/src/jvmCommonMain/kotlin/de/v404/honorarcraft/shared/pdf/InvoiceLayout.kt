@@ -89,21 +89,21 @@ object InvoiceLayout {
         links("Honorarabrechnung", PdfFont.TITLE, BLOCK_GAP)
         links("Rechnung: $formattedInvoiceNumber", PdfFont.BOLD, BLOCK_GAP)
 
-        if (company.customerSecondNameOrOrga.isNotBlank()) {
-            links(company.customerSecondNameOrOrga, PdfFont.BOLD)
-        }
-        if (company.customerFirstName.isNotBlank()) links(company.customerFirstName)
-        if (company.customerStreet.isNotBlank()) {
-            links("${company.customerStreet} ${company.customerStreetNumber}")
-        }
-        if (company.customerMailBox.isNotBlank()) links("Postfach ${company.customerMailBox}")
-        if (company.customerPlz.isNotBlank() || company.customerCityName.isNotBlank()) {
-            links("${company.customerPlz} ${company.customerCityName}", abstand = BLOCK_GAP)
+        val kunde = invoice.customer
+        if (kunde != null) {
+            if (kunde.nameOrOrga.isNotBlank()) links(kunde.nameOrOrga, PdfFont.BOLD)
+            if (kunde.firstName.isNotBlank()) links(kunde.firstName)
+            if (kunde.street.isNotBlank()) links("${kunde.street} ${kunde.streetNumber}")
+            if (kunde.mailBox.isNotBlank()) links("Postfach ${kunde.mailBox}")
+            if (kunde.plz.isNotBlank() || kunde.cityName.isNotBlank()) {
+                links("${kunde.plz} ${kunde.cityName}", abstand = BLOCK_GAP)
+            }
         }
 
-        if (company.eduCenter.isNotBlank()) links("Bildungszentrum: ${company.eduCenter}")
-        if (company.locationNr.isNotBlank()) links("Standortnummer: ${company.locationNr}")
-        if (company.schoolType.isNotBlank()) links("Schulart / Maßnahme: ${company.schoolType}")
+        val angaben = invoice.invoice
+        if (angaben.eduCenter.isNotBlank()) links("Bildungszentrum: ${angaben.eduCenter}")
+        if (angaben.locationNr.isNotBlank()) links("Standortnummer: ${angaben.locationNr}")
+        if (angaben.schoolType.isNotBlank()) links("Schulart / Maßnahme: ${angaben.schoolType}")
         y += 25f
 
         // --- Zeitraum und Summen ----------------------------------------------------

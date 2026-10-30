@@ -4,19 +4,13 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.math.BigDecimal
 
+/**
+ * Der Rechnungssteller: eigene Anschrift, Finanzdaten, Unterschrift, Ablageordner und der
+ * allgemeine Honorarsatz. Genau eine Zeile (`id = 1`). Die Empfänger stehen in [Customer].
+ */
 @Entity(tableName = "company_data")
 data class CompanyData(
     @PrimaryKey val id: Int = 1, // Fixed ID for single entry
-    var eduCenter: String = "Ulm/Eselsberg",
-    var locationNr: String = "42-362",
-    var schoolType: String = "Nachhilfe",
-    var customerSecondNameOrOrga: String = "Berufsbildung GmbH",
-    var customerFirstName: String = "",
-    var customerPlz: String = "89073",
-    var customerCityName: String = "Ulm",
-    var customerMailBox: String = "13 41 65",
-    var customerStreet: String = "",
-    var customerStreetNumber: String = "",
     var billerSecondName: String = "Mustermann",
     var billerFirstName: String = "Max",
     var billerStreetName: String = "Musterstraße",

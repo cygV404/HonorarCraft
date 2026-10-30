@@ -48,4 +48,10 @@ object SettingsKeys {
     const val SELECTED_INVOICE_NUMBER = "selected_invoice_number"
     const val INVOICE_FORMAT = "invoice_format"
     const val THEME_MODE = "theme_mode"
+
+    /** Kunde, für den erfasst wird. Als Text gespeichert, weil [Settings] kein Long kennt. */
+    const val SELECTED_CUSTOMER_ID = "selected_customer_id"
+
+    /** Kundenfilter der Übersicht; leer heißt: alle Kunden. */
+    const val DASHBOARD_CUSTOMER_FILTER = "dashboard_customer_filter"
 }

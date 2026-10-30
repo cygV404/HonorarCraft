@@ -204,11 +204,21 @@ fun EntryWindowContent(
         } else {
             TopAppBar(
                 title = {
-                    Text(
-                        "Rechnung $displayInvoiceNumber",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Column {
+                        Text(
+                            "Rechnung $displayInvoiceNumber",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        invoiceWithEntries?.customer?.let { kunde ->
+                            Text(
+                                kunde.displayName,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 },
                 actions = {
                     Box {

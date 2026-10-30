@@ -1,4 +1,4 @@
-# HonorarCraft v2.0
+# HonorarCraft v2.1
 
 Ein modernes Tool zur Honorarabrechnung und Rechnungsverwaltung für **Desktop und Android**,
 entwickelt mit **Compose Multiplatform** und **Kotlin**. Beide Plattformen teilen sich
@@ -15,6 +15,10 @@ Handy und Rechner austauschen.
   Vorschlägen aus den zuletzt gebuchten Fächern.
 * **PDF-Export:** Erstellt die Rechnung mit einem Klick, auf beiden Plattformen identisch.
   Der Zielordner ist frei wählbar.
+* **Mehrere Kunden:** Beliebig viele Rechnungsempfänger mit eigener Anschrift und auf Wunsch
+  eigenem Honorarsatz. Jede Rechnung gehört zu einem Kunden, der Kundenname steht im
+  PDF-Dateinamen, und die Übersicht lässt sich nach Kunde filtern. Kunden mit Rechnungen
+  werden archiviert statt gelöscht.
 * **Rechnungs-Management:** Die Rechnungsnummer wird nach dem erfolgreichen Export erhöht;
   wahlweise als laufende Nummer, mit Jahr oder mit Jahr und Monat.
 * **Sicherung und Umzug:** Der komplette Datenbestand lässt sich in eine Datei schreiben und

@@ -17,6 +17,7 @@ import de.v404.honorarcraft.shared.data.AndroidDatabase
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
 import de.v404.honorarcraft.shared.pdf.createInvoicePdf
+import de.v404.honorarcraft.shared.pdf.pdfDateiname
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
 import de.v404.honorarcraft.shared.logError
 import kotlinx.coroutines.CompletableDeferred
@@ -112,7 +113,7 @@ private class AndroidPlatformServices(
         company: CompanyData,
         formattedInvoiceNumber: String,
     ): Result<String> = runCatching {
-        val dateiname = "Rechnung_$formattedInvoiceNumber.pdf"
+        val dateiname = pdfDateiname(formattedInvoiceNumber, invoice.customer)
 
         // Hat der Nutzer einen Ordner gewaehlt, wird dorthin geschrieben.
         val gewaehlt = company.pdfPath.takeIf { it.startsWith("content://") }

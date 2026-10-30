@@ -28,7 +28,7 @@ class CalculationTest {
         )
 
     private fun invoice(vararg entries: InvoiceEntry) =
-        InvoiceWithEntries(InvoiceData("01"), entries.toList())
+        InvoiceWithEntries(InvoiceData("01", customerId = 1), entries.toList(), customer = null)
 
     // ---------- UE-Umrechnung und Summen ----------
 
