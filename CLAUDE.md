@@ -120,7 +120,8 @@ fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
   `invoice_entries` (`invoiceNumber` → `invoices` mit `CASCADE`), `hidden_subjects`.
 - **Nie `OnConflictStrategy.REPLACE` auf `invoices` oder `customers`:** SQLite ersetzt durch
   Löschen und Neuanlegen, und das `CASCADE` nähme alle Positionen der Rechnung mit. Deshalb
-  `insertInvoice` mit `IGNORE` plus `updateInvoice`, Kunden über `@Upsert`.
+  `insertInvoice` mit `IGNORE`, Änderungen über gezielte `UPDATE`-Abfragen
+  (`setInvoiceCustomer`, `setInvoiceDetails`), Kunden über `@Upsert`.
 - **Eine Elterntabelle umbauen** (SQLite kann Spalten und Fremdschlüssel nicht nachträglich
   ändern): Positionen vorher in eine Hilfstabelle ohne Fremdschlüssel sichern, `DROP`/`RENAME`,
   zurückspielen — siehe `MIGRATION_5_6` und `MIGRATION_11_12`, jeweils mit Test.
@@ -164,7 +165,10 @@ Rechnungsnummern-Formate (laufend, mit Jahr, mit Jahr und Monat) in `InvoiceNumb
 - **Kunden:** `customers`, `selectedCustomer` (= Kunde der angezeigten Rechnung, sonst der
   gewählte aktive), `invoiceDetails` (Angaben der Rechnung bzw. Entwurf vor dem ersten Eintrag,
   vorbelegt von der letzten Rechnung des Kunden) und `dashboardCustomerFilter`. Gewählter
-  Kunde und Filter liegen in `Settings`. Ohne Kunden verweigert `addEntryFromForm()`.
+  Kunde und Filter liegen in `Settings`; ein Filter auf eine id, die es nicht (mehr) gibt,
+  gilt als „alle“. Ohne Kunden verweigert `addEntryFromForm()`. Änderungen an einer Rechnung
+  laufen über `schreibeRechnung` (ein `Mutex`), damit schnelle Tastendrücke sich nicht
+  überholen.
 - PDF-Erzeugung und Sicherung sind bewusst **nicht** im ViewModel; sie laufen über
   `PlatformServices` und rufen danach `incrementInvoiceNumber()` bzw. `showMessage(...)`.
 - Um Room-Aufrufe gehört **kein** `withContext(Dispatchers.IO)` — Room legt suspend-Abfragen

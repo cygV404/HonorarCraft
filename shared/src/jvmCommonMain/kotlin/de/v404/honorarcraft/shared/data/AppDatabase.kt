@@ -11,7 +11,6 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.Transaction
 import androidx.room.TypeConverters
-import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -22,13 +21,31 @@ interface InvoiceDao {
      *
      * Nie `REPLACE`: SQLite ersetzt durch Löschen und Neuanlegen, und das `ON DELETE CASCADE`
      * von `invoice_entries` nähme dabei alle Positionen der Rechnung mit. Ändern geht über
-     * [updateInvoice].
+     * [setInvoiceCustomer] und [setInvoiceDetails].
      */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertInvoice(invoice: InvoiceData)
 
-    @Update
-    suspend fun updateInvoice(invoice: InvoiceData)
+    /**
+     * Hängt eine Rechnung an einen anderen Kunden. Nur diese Spalte: ein `@Update` der ganzen
+     * Zeile aus einem älteren Stand würde gleichzeitig geänderte Angaben zurückdrehen.
+     */
+    @Query("UPDATE invoices SET customerId = :customerId WHERE invoiceNumber = :invoiceNumber")
+    suspend fun setInvoiceCustomer(invoiceNumber: String, customerId: Long)
+
+    /** Bildungszentrum, Standortnummer und Schulart einer Rechnung; den Kunden lässt es stehen. */
+    @Query(
+        """
+        UPDATE invoices SET eduCenter = :eduCenter, locationNr = :locationNr, schoolType = :schoolType
+         WHERE invoiceNumber = :invoiceNumber
+        """
+    )
+    suspend fun setInvoiceDetails(
+        invoiceNumber: String,
+        eduCenter: String,
+        locationNr: String,
+        schoolType: String,
+    )
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: InvoiceEntry)

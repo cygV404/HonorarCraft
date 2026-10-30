@@ -178,12 +178,26 @@ Desktop und Android **gemeinsam** als 2.1 ausliefern.
 - Das Kundenformular ist ein modaler Dialog. Abbrechen verwirft, deshalb braucht es den
   `hasUnsavedChanges`-Mechanismus nicht.
 - Im PDF-Bereich steht der Kunde unter der Rechnungsnummer; gewählt wird er unter „Erstellen".
-  Eine bestehende Rechnung lässt sich dort auf einen anderen Kunden umhängen.
+  Eine bestehende Rechnung lässt sich dort auf einen anderen Kunden umhängen — nach einer
+  Rückfrage, weil sie alle Einträge mitnimmt.
 - Gefunden beim Umbau: `insertInvoice` lief mit `REPLACE`, was bei einer bestehenden Rechnung
-  über das `CASCADE` alle Positionen gelöscht hätte. Jetzt `IGNORE` plus `updateInvoice`.
+  über das `CASCADE` alle Positionen gelöscht hätte. Jetzt `IGNORE`; geändert wird über
+  gezielte `UPDATE`-Abfragen nur der betroffenen Spalten.
 - Vorab geprüft: eine Kopie der echten Desktop-Datenbank (10 Rechnungen, 81 Positionen)
   migriert ohne Verlust — Positionen unverändert, Fremdschlüssel- und Integritätsprüfung `ok`.
 - Neu: Oberflächentests in `composeApp/src/jvmTest`, auch in der CI.
+- Nachprüfung (30.10.2026), behoben:
+  - Die Felder der Rechnungsangaben übernahmen Änderungen von außen nur ohne Fokus. Nach
+    einem Rechnungswechsel über das Menü zeigten sie die alte Rechnung, und Tippen schrieb
+    deren Angaben in die neue. Jetzt erkennen sie den Rücklauf eigener Eingaben
+    (`RechnungsAngabenUiTest`).
+  - Kundenwechsel auf einer bestehenden Rechnung hängte sie ohne Rückfrage um.
+  - Umhängen und Angaben schrieben je die ganze Zeile aus einem älteren Stand und konnten
+    sich gegenseitig zurückdrehen; schnelle Änderungen liefen ungeordnet.
+  - Ein gemerkter Übersichtsfilter auf einen Kunden, den es nach dem Einlesen einer
+    Sicherung nicht mehr gibt, zeigte 0 € bei der Anzeige „Alle Kunden“.
+  - Mit allen Kunden archiviert hieß es „Noch kein Kunde angelegt“; und bei nur einem
+    aktiven Kunden ließ sich eine Rechnung eines archivierten nicht umhängen.
 
 ## Bewusst nicht Teil des Vorhabens
 

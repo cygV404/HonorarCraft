@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import de.v404.honorarcraft.shared.data.Customer
@@ -67,9 +66,9 @@ private fun AuswahlFeld(
     onAuswahl: (Long?) -> Unit,
     modifier: Modifier = Modifier,
     hinweis: String? = null,
+    waehlbar: Boolean = optionen.size > 1,
 ) {
     var offen by remember { mutableStateOf(false) }
-    val waehlbar = optionen.size > 1
     ExposedDropdownMenuBox(
         expanded = offen && waehlbar,
         onExpandedChange = { offen = it && waehlbar },
@@ -118,10 +117,17 @@ fun KundenAuswahl(
     val aktive = kunden.filter { !it.archived }
     AuswahlFeld(
         label = "Kunde",
-        text = ausgewaehlt?.displayName ?: "Noch kein Kunde angelegt",
+        text = ausgewaehlt?.displayName
+            ?: if (kunden.isEmpty()) "Noch kein Kunde angelegt" else "Kein aktiver Kunde",
         optionen = aktive.map { it.id to it.displayName },
         onAuswahl = { id -> id?.let(onAuswahl) },
-        hinweis = if (ausgewaehlt == null) "Kunden legst du unter „Daten“ an." else null,
+        hinweis = when {
+            ausgewaehlt != null -> null
+            kunden.isEmpty() -> "Kunden legst du unter „Daten“ an."
+            else -> "Archivierte Kunden stellst du unter „Daten“ wieder her."
+        },
+        // Auch mit nur einem aktiven Kunden, wenn die Rechnung einem archivierten gehört.
+        waehlbar = aktive.any { it.id != ausgewaehlt?.id },
         modifier = modifier,
     )
 }
@@ -157,9 +163,12 @@ fun KundenFilter(
  * Bildungszentrum, Standortnummer und Schulart der angezeigten Rechnung, zum Aufklappen.
  *
  * Die Felder halten ihren Text lokal: bei einer bestehenden Rechnung geht jede Änderung in die
- * Datenbank und kommt als neuer Wert zurück. Übernähme das Feld diesen Rücklauf beim Tippen,
- * könnte ein verspäteter Zwischenstand Buchstaben verschlucken. Von außen (Rechnungswechsel,
- * Vorbelegung) wird nur übernommen, solange keines der Felder den Fokus hat.
+ * Datenbank und kommt verzögert als neuer Wert zurück. Übernähme das Feld jeden Rücklauf, könnte
+ * ein verspäteter Zwischenstand Buchstaben verschlucken. Deshalb merkt es sich, was es selbst
+ * abgeschickt hat: ein solcher Rücklauf wird übergangen, alles andere (Rechnungswechsel,
+ * Vorbelegung) sofort übernommen — auch wenn ein Feld gerade den Fokus hat. Sonst zeigte es nach
+ * einem Wechsel über das Rechnungsmenü die alte Rechnung, und Tippen schriebe deren Angaben in
+ * die neue.
  */
 @Composable
 fun RechnungsAngaben(
@@ -169,11 +178,22 @@ fun RechnungsAngaben(
 ) {
     var offen by remember { mutableStateOf(false) }
     var lokal by remember { mutableStateOf(details) }
-    var fokussiert by remember { mutableStateOf(0) }
-    LaunchedEffect(details) { if (fokussiert == 0) lokal = details }
+    // Abgeschickte Stände, deren Rücklauf noch aussteht, älteste zuerst.
+    val unterwegs = remember { mutableListOf<InvoiceDetails>() }
+    LaunchedEffect(details) {
+        val eigener = unterwegs.indexOf(details)
+        if (eigener >= 0) {
+            // Rücklauf einer eigenen Änderung; ältere Zwischenstände sind damit überholt.
+            repeat(eigener + 1) { unterwegs.removeAt(0) }
+        } else {
+            unterwegs.clear()
+            lokal = details
+        }
+    }
 
     fun aendern(neu: InvoiceDetails) {
         lokal = neu
+        unterwegs += neu
         onAenderung(neu)
     }
 
@@ -212,30 +232,27 @@ fun RechnungsAngaben(
             )
         }
         if (offen) {
-            val fokus = Modifier
-                .fillMaxWidth()
-                .onFocusChanged { if (it.isFocused) fokussiert++ else if (fokussiert > 0) fokussiert-- }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = lokal.eduCenter,
                     onValueChange = { aendern(lokal.copy(eduCenter = it)) },
                     label = { Text("Bildungszentrum") },
                     singleLine = true,
-                    modifier = fokus,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = lokal.locationNr,
                     onValueChange = { aendern(lokal.copy(locationNr = it)) },
                     label = { Text("Standort Nr") },
                     singleLine = true,
-                    modifier = fokus,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = lokal.schoolType,
                     onValueChange = { aendern(lokal.copy(schoolType = it)) },
                     label = { Text("Schulart/Maßnahme") },
                     singleLine = true,
-                    modifier = fokus,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }

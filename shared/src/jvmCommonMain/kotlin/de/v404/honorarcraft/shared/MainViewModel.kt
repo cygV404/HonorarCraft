@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
@@ -164,11 +166,24 @@ class MainViewModel(
 
     private var confirmationJob: Job? = null
 
-    /** Kundenfilter der Übersicht; `null` heißt: alle Kunden. */
     private val _dashboardCustomerFilter = MutableStateFlow(
         settings.getString(SettingsKeys.DASHBOARD_CUSTOMER_FILTER, "").toLongOrNull()
     )
-    val dashboardCustomerFilter: StateFlow<Long?> = _dashboardCustomerFilter.asStateFlow()
+
+    /**
+     * Der gemerkte Filter, aber nur, solange es den Kunden gibt. Nach dem Einlesen einer
+     * Sicherung kann die gemerkte id ins Leere zeigen; gefiltert würde dann auf 0 €, während
+     * die Auswahl „Alle Kunden“ zeigt.
+     */
+    private val wirksamerKundenfilter = combine(
+        _dashboardCustomerFilter, customerDao.getAllCustomers()
+    ) { id, liste ->
+        id?.takeIf { gesucht -> liste.any { it.id == gesucht } }
+    }.distinctUntilChanged()
+
+    /** Kundenfilter der Übersicht; `null` heißt: alle Kunden. */
+    val dashboardCustomerFilter: StateFlow<Long?> = wirksamerKundenfilter
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _dashboardCustomerFilter.value)
 
     fun setDashboardCustomerFilter(customerId: Long?) {
         _dashboardCustomerFilter.value = customerId
@@ -176,7 +191,7 @@ class MainViewModel(
     }
 
     // Jahresumsatz für das Jahr und den Kundenfilter der Übersicht
-    val yearlyRevenue: StateFlow<BigDecimal> = combine(_dashboardYear, _dashboardCustomerFilter) { year, kunde ->
+    val yearlyRevenue: StateFlow<BigDecimal> = combine(_dashboardYear, wirksamerKundenfilter) { year, kunde ->
         year to kunde
     }
         .flatMapLatest { (year, kunde) ->
@@ -266,14 +281,26 @@ class MainViewModel(
     }
 
     /**
+     * Reiht die Änderungen an einer Rechnung in der Reihenfolge ein, in der sie kamen. Ohne das
+     * laufen zwei schnell aufeinanderfolgende Tastendrücke als getrennte Coroutinen und können
+     * sich überholen — dann stünde der ältere Stand in der Datenbank.
+     */
+    private val rechnungSchreiben = Mutex()
+
+    private fun schreibeRechnung(block: suspend () -> Unit) {
+        viewModelScope.launch { rechnungSchreiben.withLock { block() } }
+    }
+
+    /**
      * Wählt den Kunden zum Erfassen. Ist die angezeigte Rechnung schon angelegt, wechselt sie
-     * mit — so lässt sich eine falsch zugeordnete Rechnung umhängen.
+     * mit — so lässt sich eine falsch zugeordnete Rechnung umhängen. Die Oberfläche fragt
+     * vorher nach.
      */
     fun selectCustomer(id: Long) {
         merkeKunde(id)
         val rechnung = currentInvoiceWithEntries.value?.invoice ?: return
         if (rechnung.customerId != id) {
-            viewModelScope.launch { invoiceDao.updateInvoice(rechnung.copy(customerId = id)) }
+            schreibeRechnung { invoiceDao.setInvoiceCustomer(rechnung.invoiceNumber, id) }
         }
     }
 
@@ -312,13 +339,12 @@ class MainViewModel(
             _detailsDraft.value = details
             return
         }
-        viewModelScope.launch {
-            invoiceDao.updateInvoice(
-                rechnung.copy(
-                    eduCenter = details.eduCenter,
-                    locationNr = details.locationNr,
-                    schoolType = details.schoolType,
-                )
+        schreibeRechnung {
+            invoiceDao.setInvoiceDetails(
+                rechnung.invoiceNumber,
+                eduCenter = details.eduCenter,
+                locationNr = details.locationNr,
+                schoolType = details.schoolType,
             )
         }
     }

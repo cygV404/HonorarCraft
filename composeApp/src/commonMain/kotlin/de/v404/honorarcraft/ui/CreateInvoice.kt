@@ -114,10 +114,12 @@ fun CreateInvoiceScreen(
     val kunden by mainViewModel.customers.collectAsState()
     val kunde by mainViewModel.selectedCustomer.collectAsState()
     val angaben by mainViewModel.invoiceDetails.collectAsState()
+    val rechnung by mainViewModel.currentInvoiceWithEntries.collectAsState()
 
     CreateInvoiceContent(
         kunden = kunden,
         kunde = kunde,
+        rechnungAngelegt = rechnung != null,
         onKundeWaehlen = { mainViewModel.selectCustomer(it) },
         angaben = angaben,
         onAngabenAendern = { mainViewModel.updateInvoiceDetails(it) },
@@ -147,6 +149,8 @@ fun CreateInvoiceScreen(
 fun CreateInvoiceContent(
     kunden: List<Customer>,
     kunde: Customer?,
+    /** Gibt es die angezeigte Rechnung schon? Dann hängt ein Kundenwechsel sie um. */
+    rechnungAngelegt: Boolean,
     onKundeWaehlen: (Long) -> Unit,
     angaben: InvoiceDetails,
     onAngabenAendern: (InvoiceDetails) -> Unit,
@@ -172,7 +176,36 @@ fun CreateInvoiceContent(
     var showMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var invoiceToDelete by remember { mutableStateOf<String?>(null) }
+    var umhaengenAuf by remember { mutableStateOf<Customer?>(null) }
     val datePickerState = rememberDatePickerState()
+
+    // Ein Kundenwechsel bei einer bestehenden Rechnung nimmt alle ihre Einträge mit. Wer nur
+    // für einen anderen Kunden weiter erfassen will, braucht stattdessen eine neue Nummer.
+    umhaengenAuf?.let { neu ->
+        AlertDialog(
+            onDismissRequest = { umhaengenAuf = null },
+            title = { Text("Rechnung umhängen?") },
+            text = {
+                Text(
+                    "Rechnung $displayInvoiceNumber gehört zu ${kunde?.displayName ?: "einem anderen Kunden"}. " +
+                        "Soll sie mit allen Einträgen zu ${neu.displayName} wechseln? " +
+                        "Die Einträge behalten ihren Honorarsatz.\n\n" +
+                        "Für eine neue Rechnung stattdessen die Rechnungsnummer in der Übersicht weiterschalten."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onKundeWaehlen(neu.id)
+                        umhaengenAuf = null
+                    }
+                ) { Text("Umhängen") }
+            },
+            dismissButton = {
+                TextButton(onClick = { umhaengenAuf = null }) { Text("Abbrechen") }
+            },
+        )
+    }
 
     if (invoiceToDelete != null) {
         AlertDialog(
@@ -291,7 +324,13 @@ fun CreateInvoiceContent(
                     KundenAuswahl(
                         kunden = kunden,
                         ausgewaehlt = kunde,
-                        onAuswahl = onKundeWaehlen,
+                        onAuswahl = { id ->
+                            if (rechnungAngelegt && id != kunde?.id) {
+                                umhaengenAuf = kunden.firstOrNull { it.id == id }
+                            } else {
+                                onKundeWaehlen(id)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Box(modifier = Modifier.fillMaxWidth()) {
@@ -550,6 +589,7 @@ fun CreateInvoicePreview() {
         CreateInvoiceContent(
             kunden = listOf(Customer(id = 1, nameOrOrga = "Bildungswerk")),
             kunde = Customer(id = 1, nameOrOrga = "Bildungswerk"),
+            rechnungAngelegt = true,
             onKundeWaehlen = {},
             angaben = InvoiceDetails("Ulm", "42-362", "Nachhilfe"),
             onAngabenAendern = {},

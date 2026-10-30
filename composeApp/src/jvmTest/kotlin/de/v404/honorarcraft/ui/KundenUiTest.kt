@@ -20,7 +20,9 @@ import androidx.compose.ui.test.runDesktopComposeUiTest
 import de.v404.honorarcraft.shared.InMemorySettings
 import de.v404.honorarcraft.shared.MainViewModel
 import de.v404.honorarcraft.shared.data.AppDatabase
+import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
+import de.v404.honorarcraft.shared.data.InvoiceData
 import de.v404.honorarcraft.shared.data.createDesktopDatabase
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -126,10 +128,41 @@ class KundenUiTest {
         }
 
     @Test
+    fun `eine bestehende Rechnung wechselt den Kunden nur nach Rueckfrage`() =
+        runDesktopComposeUiTest(width = 1200, height = 820) {
+            val (sued, kolping) = runBlocking {
+                val sued = db.customerDao().upsertCustomer(Customer(nameOrOrga = "Bildungswerk Süd"))
+                val kolping = db.customerDao().upsertCustomer(Customer(nameOrOrga = "Kolping"))
+                db.invoiceDao().insertInvoice(InvoiceData("01", customerId = sued))
+                sued to kolping
+            }
+            fun kundeVon01() = runBlocking { db.invoiceDao().getInvoice("01")!!.customerId }
+
+            setContent { HonorarCraftApp(viewModel) }
+            onNodeWithText("Erstellen").performClick()
+            runOnIdle { viewModel.setSelectedInvoiceNumber("01") }
+            waitUntil(timeoutMillis = 5_000) { viewModel.selectedCustomer.value?.id == sued }
+
+            onNodeWithText("Bildungswerk Süd").performClick()
+            onNodeWithText("Kolping").performClick()
+            onNodeWithText("Rechnung umhängen?").assertExists()
+            foto("10-umhaengen-rueckfrage", onNode(isDialog()))
+            onNodeWithText("Abbrechen").performClick()
+            waitForIdle()
+            assertEquals(sued, kundeVon01())
+            assertEquals(sued, viewModel.selectedCustomer.value?.id)
+
+            onNodeWithText("Bildungswerk Süd").performClick()
+            onNodeWithText("Kolping").performClick()
+            onNodeWithText("Umhängen").performClick()
+            waitUntil(timeoutMillis = 5_000) { kundeVon01() == kolping }
+        }
+
+    @Test
     fun `schmale Ansicht wie auf dem Handy`() = runDesktopComposeUiTest(width = 400, height = 800) {
         runBlocking {
             db.customerDao().upsertCustomer(
-                de.v404.honorarcraft.shared.data.Customer(nameOrOrga = "Bildungswerk Süd")
+                Customer(nameOrOrga = "Bildungswerk Süd")
             )
         }
         setContent { HonorarCraftApp(viewModel) }

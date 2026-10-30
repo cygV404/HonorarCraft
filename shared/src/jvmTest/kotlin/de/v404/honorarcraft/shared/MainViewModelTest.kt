@@ -256,6 +256,59 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `ein Filter auf einen Kunden, den es nicht mehr gibt, zeigt alle`() = test {
+        // Etwa nach dem Einlesen einer Sicherung, in der es die gemerkte id nicht gibt.
+        settings.putString(SettingsKeys.DASHBOARD_CUSTOMER_FILTER, "99")
+        val a = kunde("A")
+        db.invoiceDao().insertInvoice(InvoiceData("01", customerId = a))
+        db.invoiceDao().insertEntry(InvoiceEntry(invoiceNumber = "01", date = "02.09.2026", lessonUnits = BigDecimal("3"), teachingSubject = "", rate = BigDecimal("23.00")))
+
+        val vm = viewModel()
+        val umsatz = async { vm.yearlyRevenue.first { it.signum() != 0 } }
+        vm.setDashboardYear(2026)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(BigDecimal("92.00"), umsatz.await())
+        assertNull(vm.dashboardCustomerFilter.value)
+    }
+
+    @Test
+    fun `Umhaengen und gleich danach Angaben aendern behalten beides`() = test {
+        val a = kunde("A")
+        val b = kunde("B")
+        db.invoiceDao().insertInvoice(InvoiceData("05", customerId = a, eduCenter = "alt"))
+        val vm = viewModel()
+        vm.setSelectedInvoiceNumber("5")
+        testScheduler.advanceUntilIdle()
+
+        // Beides, bevor die Datenbank den neuen Stand zurückmeldet. Früher schrieb das zweite
+        // die ganze Zeile aus dem alten Stand und hängte die Rechnung damit wieder an A.
+        vm.selectCustomer(b)
+        vm.updateInvoiceDetails(InvoiceDetails("neu", "", ""))
+        testScheduler.advanceUntilIdle()
+
+        val rechnung = db.invoiceDao().getInvoice("05")!!
+        assertEquals(b, rechnung.customerId)
+        assertEquals("neu", rechnung.eduCenter)
+    }
+
+    @Test
+    fun `schnelle Aenderungen der Angaben kommen in ihrer Reihenfolge an`() = test {
+        val a = kunde("A")
+        db.invoiceDao().insertInvoice(InvoiceData("05", customerId = a))
+        val vm = viewModel()
+        vm.setSelectedInvoiceNumber("5")
+        testScheduler.advanceUntilIdle()
+
+        listOf("E", "Eh", "Ehi", "Ehin", "Ehing", "Ehinge", "Ehingen").forEach {
+            vm.updateInvoiceDetails(InvoiceDetails(it, "", ""))
+        }
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Ehingen", db.invoiceDao().getInvoice("05")!!.eduCenter)
+    }
+
+    @Test
     fun `ein Kunde mit Rechnungen laesst sich nur archivieren`() = test {
         val a = kunde("A")
         db.invoiceDao().insertInvoice(InvoiceData("01", customerId = a))
