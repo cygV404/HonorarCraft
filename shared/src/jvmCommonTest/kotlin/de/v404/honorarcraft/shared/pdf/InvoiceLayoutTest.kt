@@ -168,6 +168,6 @@ class InvoiceLayoutTest {
         val fach = modell.pages.last().commands
             .filterIsInstance<DrawCommand.Text>()
             .single { it.text == "Ein sehr langes Unterrichtsfach" }
-        assertTrue(fach.clipWidth != null && fach.clipWidth!! > 0f)
+        assertTrue((fach.clipWidth ?: 0f) > 0f)
     }
 }

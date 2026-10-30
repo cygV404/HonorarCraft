@@ -73,7 +73,7 @@ Die Desktop-Icons werden aus einer PNG-Quelle erzeugt, nicht von Hand gepflegt:
   die Desktop-Seite der Plattform-Schnittstellen, `androidMain` die Android-Seite.
 - `:androidApp` — `MainActivity`, Manifest, `applicationId`. Eigenes Modul, weil AGP 9
   `com.android.application` nicht mehr mit dem KMP-Plugin im selben Modul zulässt; die
-  KMP-Module nutzen `com.android.kotlin.multiplatform.library` und `kotlin { androidLibrary { … } }`
+  KMP-Module nutzen `com.android.kotlin.multiplatform.library` und `kotlin { android { … } }`
   statt `androidTarget()`.
 
 ### Quellsätze im `:shared`-Modul

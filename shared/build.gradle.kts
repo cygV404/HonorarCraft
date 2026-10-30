@@ -8,7 +8,7 @@ plugins {
 
 kotlin {
     // Ab AGP 9 wird das Android-Target über diesen Block deklariert, nicht über androidTarget().
-    androidLibrary {
+    android {
         namespace = "de.v404.honorarcraft.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -16,6 +16,9 @@ kotlin {
         withHostTest {}
     }
     jvm()
+
+    // Room erzeugt für @ConstructedBy ein `expect object`; ohne den Schalter warnt jeder Build.
+    compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
 
     // Android und Desktop sind beide JVM-Ziele. Entities und Rechenlogik brauchen
     // java.math.BigDecimal, das in commonMain nicht verfügbar ist; deshalb hängt zwischen

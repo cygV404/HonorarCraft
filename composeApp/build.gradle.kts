@@ -13,7 +13,7 @@ plugins {
 kotlin {
 
     // Android-Target als KMP-Library (AGP 9). Die eigentliche Android-App liegt in :androidApp.
-    androidLibrary {
+    android {
         namespace = "de.v404.honorarcraft.ui"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -23,16 +23,16 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.shared)
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.resources)
+            implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.serializationJson)
-            implementation(compose.materialIconsExtended)
+            implementation(libs.compose.materialIconsExtended)
         }
         androidMain.dependencies {
             // Die Datei-Dialoge laufen über Activity-Ergebnisse und brauchen die Launcher.

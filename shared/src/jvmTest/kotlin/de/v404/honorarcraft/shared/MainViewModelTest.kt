@@ -6,6 +6,7 @@ import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
 import de.v404.honorarcraft.shared.data.InvoiceFormat
 import de.v404.honorarcraft.shared.data.createDesktopDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -26,6 +27,7 @@ import kotlin.test.assertTrue
  * Das ViewModel aus der Android-App läuft jetzt ohne Emulator: Datenbank und
  * Einstellungsspeicher werden hereingereicht, statt aus einem Application-Objekt zu kommen.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
