@@ -26,15 +26,18 @@ jobs:
 
       # jvmTest deckt Desktop ab, testAndroidHostTest laesst die gemeinsamen Tests
       # zusaetzlich gegen das Android-Target laufen - beides ohne Emulator.
+      # :composeApp:jvmTest bedient die Oberflaeche ohne Bildschirm.
       - name: Tests ausfuehren
-        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest
+        run: ./gradlew :shared:jvmTest :shared:testAndroidHostTest :composeApp:jvmTest
 
       - name: Testberichte sichern
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: testberichte
-          path: shared/build/reports/tests/
+          path: |
+            shared/build/reports/tests/
+            composeApp/build/reports/tests/
 
   # Das Android-Paket. Nur der Debug-Build: der Release-Schluessel liegt nicht im Repo,
   # und ohne ihn waere das Ergebnis ohnehin unsigniert und nicht ausliefbar.
