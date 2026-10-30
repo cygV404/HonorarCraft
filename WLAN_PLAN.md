@@ -84,6 +84,12 @@ Bewusst primitiv, kein HTTP, kein Framework:
       abgebrochene Verbindung lässt den Bestand unangetastet.
 - [ ] **Android-Manifest:** `INTERNET`-Berechtigung. **Das ist der sichtbare Preis** — siehe
       unten.
+      **Ab `targetSdk` 37 (Android 17) reicht das nicht:** Zugriff aufs lokale Netz braucht
+      dann zusätzlich die Laufzeit-Berechtigung für lokale Netzwerke, und Google Play verlangt
+      dafür eine Erklärung in der Play Console (Richtlinien-Mail vom Oktober 2026: nur erlaubt,
+      wenn es Kernfunktion ist und ein Geräte-Picker nicht genügt). Solange `targetSdk` 36
+      bleibt, gilt das noch nicht — beim Anheben auf 37 Berechtigung, Laufzeitabfrage und
+      Play-Erklärung gemeinsam einplanen.
 - [ ] **Lokale Adresse ermitteln:** `expect fun localeNetzAdresse(): String?`. Desktop über
       `NetworkInterface`, Android ebenso; die Schnittstelle ohne `INTERNET` nicht abfragbar.
 - [ ] **Oberfläche:** auf der Daten-Seite unter „Sicherung" zwei Knöpfe, „Über WLAN senden"

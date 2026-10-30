@@ -2,30 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Aktueller Umbau
-
-Das Projekt wird gerade zu einem KMP-Projekt ausgebaut, das sich Code mit der Android-App
-unter `~/StudioProjects/HonorarCraftAndroid` teilt. **Arbeitsplan, getroffene Entscheidungen und
-offene Fragen stehen in `KMP_PLAN.md` — vor Änderungen an Architektur, Datenhaltung oder
-Rechenlogik dort nachsehen.** Der Umbau ist abgeschlossen und auf `main` gepusht; die CI läuft wieder bei jedem Push.
-
-Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, drei Module
-(`shared`, `composeApp`, `androidApp`), Paket überall `de.v404.honorarcraft`, Version 2.0.
-Beide Plattformen teilen Datenschicht, ViewModel, Oberfläche und PDF-Layout.
-
 ## Projekt
 
-HonorarCraft — eine deutschsprachige App (Compose Multiplatform) für die Honorarabrechnung von
-Lehrkräften: Unterrichtsstunden erfassen, Jahresumsatz verfolgen, Rechnung als PDF exportieren.
-Gradle-Rootprojekt und Produktname sind beide `HonorarCraft`. Ziel ist Desktop **und** Android aus
-einer Quelle; heute läuft die vollständige Anwendung nur auf dem Desktop.
+HonorarCraft — eine deutschsprachige App für die Honorarabrechnung von Lehrkräften:
+Unterrichtsstunden erfassen, Jahresumsatz verfolgen, Rechnung als PDF exportieren, Bestand
+sichern. **Kotlin Multiplatform mit Compose Multiplatform, Desktop (JVM) und Android aus einer
+Quelle** — Datenschicht, ViewModel, Oberfläche und PDF-Layout sind gemeinsam. Die Android-App
+ist im Play Store (`applicationId de.v404.honorarcraft` — darf sich nie ändern).
 
-Alle UI-Texte sind deutsch und direkt im Code hinterlegt (kein Resource-Bundle) — neue Texte für Nutzer ebenfalls
-auf Deutsch schreiben.
+Alle UI-Texte sind deutsch und direkt im Code hinterlegt (kein Resource-Bundle) — neue Texte
+für Nutzer ebenfalls auf Deutsch schreiben. Viele Bezeichner im neueren Code sind ebenfalls
+deutsch (`Bereich`, `sofortSchreiben`, …).
+
+Planungsdokumente im Wurzelverzeichnis:
+- `KMP_PLAN.md` — der abgeschlossene Umbau zu KMP (Version 2.0). Begründungen für Architektur-,
+  Datenhaltungs- und Rechenentscheidungen stehen dort; vor Änderungen in diesen Bereichen lesen.
+- `WLAN_PLAN.md` — nächstes Vorhaben: Sicherung über das lokale Netz übertragen (kein Sync).
+
+Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, Version 2.0,
+Paket überall `de.v404.honorarcraft`, `minSdk` 29, `targetSdk` 36, `compileSdk` 37.
 
 ## Befehle
 
-JDK 17 (CI, `qodana.yaml` und `.idea/misc.xml` legen alle 17 fest). Gradle Configuration Cache und Build Cache sind aktiv.
+JDK 17 (CI, `qodana.yaml` und `.idea` legen alle 17 fest). Configuration Cache und Build Cache
+sind aktiv.
 
 ```bash
 ./gradlew :composeApp:run                                  # Desktop-App starten
@@ -34,28 +34,31 @@ JDK 17 (CI, `qodana.yaml` und `.idea/misc.xml` legen alle 17 fest). Gradle Confi
 ./gradlew :composeApp:packageReleaseDistributionForCurrentOS
 ./gradlew :androidApp:assembleDebug                        # Android-APK -> androidApp/build/outputs/apk/debug/
 ./gradlew build                                            # alles kompilieren
-./gradlew :composeApp:jvmTest                              # Tests (bisher existieren keine Testquellen)
-./gradlew :composeApp:jvmTest --tests "de.v404.honorarcraft.SomeTest"
+
+# Tests liegen nur im :shared-Modul
+./gradlew :shared:jvmTest                                  # jvmCommonTest + jvmTest gegen den Desktop
+./gradlew :shared:testAndroidHostTest                      # jvmCommonTest gegen das Android-Target, ohne Emulator
+./gradlew :shared:jvmTest --tests "de.v404.honorarcraft.shared.data.CalculationTest"
 ```
 
-Für Android-Builds muss `local.properties` ein `sdk.dir` enthalten (die Datei ist gitignored).
+Für Android-Builds muss `local.properties` ein `sdk.dir` enthalten (gitignored; lokal
+`~/Android/Sdk`). Die Plattform heißt im `sdkmanager` `platforms;android-37.0`.
 
-**AGP bleibt auf 9.1.1**, obwohl 9.4 verfügbar ist: Das Android-Plugin von IntelliJ IDEA
-unterstützt höchstens 9.1.x und verweigert sonst den Gradle-Sync. Ein Anheben erst, wenn die
-IDE nachzieht — oder wenn das Projekt nach Android Studio umzieht.
+**AGP bleibt auf 9.1.1**, obwohl Neueres verfügbar ist: Das Android-Plugin von IntelliJ IDEA
+unterstützt höchstens 9.1.x und verweigert sonst den Gradle-Sync. Anheben erst, wenn die IDE
+nachzieht — oder wenn das Projekt nach Android Studio umzieht.
 
 Die CI (`.github/workflows/package.yml`) läuft bei Push auf `main`, bei Pull Requests und von
-Hand. Drei Schritte: erst die Tests (`:shared:jvmTest` und `:shared:testAndroidHostTest`), dann
-parallel das Android-Debug-APK und die Desktop-Pakete für `ubuntu-latest`, `windows-latest` und
-`macos-latest` — das `.deb` also eingeschlossen. Ein Android-**Release** baut die CI bewusst
-nicht: der Signierschlüssel liegt nicht im Repo. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter — einen lokalen
-Lint-Task gibt es nicht.
+Hand: erst die beiden Test-Tasks oben, dann parallel das Android-Debug-APK und die
+Desktop-Pakete für Ubuntu, Windows und macOS. Ein Android-**Release** baut die CI bewusst nicht —
+der Signierschlüssel liegt nicht im Repo. `qodana.yaml` konfiguriert den JetBrains-JVM-Linter;
+einen lokalen Lint-Task gibt es nicht.
 
 **Die Programmversion steht an genau einer Stelle:** `appVersion` in `gradle/libs.versions.toml`.
 Daraus speisen sich `packageVersion` (Desktop, um die dritte Stelle ergänzt), `versionName`
-(Android) und die im Info-Dialog angezeigte Version (von Gradle als `GENERATED_APP_VERSION`
-erzeugt). Bei einem Release zusätzlich anzupassen: `androidVersionCode` im selben Katalog und
-die README-Überschrift.
+(Android) und `Constants.APP_VERSION` im Info-Dialog (von Gradle als `GENERATED_APP_VERSION`
+erzeugt). Bei einem Release zusätzlich anpassen: `androidVersionCode` im selben Katalog und die
+README-Überschrift.
 
 Die Desktop-Icons werden aus einer PNG-Quelle erzeugt, nicht von Hand gepflegt:
 `java tools/MakeIcons.java <quelle.png> composeApp/src/jvmMain/composeResources/drawable`
@@ -65,151 +68,138 @@ Die Desktop-Icons werden aus einer PNG-Quelle erzeugt, nicht von Hand gepflegt:
 
 ### Module
 
-- `:shared` — plattformübergreifende Logik, Targets Android + JVM. Enthält die Room-Datenschicht
-  (`data/`), die aus der Android-App übernommen wurde. Der Room-Compiler ist pro Target
-  eingehängt (`kspJvm`, `kspAndroid`), und die Lint-Tasks brauchen ein explizites `dependsOn`
-  auf die KSP-Tasks, sonst bricht `./gradlew build` mit "implicit dependency" ab.
-- `android-legacy/` — **kein Gradle-Modul**, sondern das per `git subtree` importierte
-  Android-Repo als Zwischenlager. Von hier wird Stück für Stück umgezogen; am Ende von Phase 5
-  verschwindet das Verzeichnis. Nichts Neues dort hinzufügen.
-- `:composeApp` — Oberfläche. Targets Android + JVM. **Der gesamte Anwendungscode liegt weiterhin
-  in `src/jvmMain/kotlin/de/v404/honorarcraft/`**, `commonMain` enthält nur Abhängigkeiten.
-- `:androidApp` — `MainActivity`, Manifest, `applicationId de.v404.honorarcraft`. Eigenes Modul,
-  weil AGP 9 `com.android.application` nicht mehr mit dem KMP-Plugin im selben Modul zulässt;
-  KMP-Module nutzen stattdessen `com.android.kotlin.multiplatform.library` und den Block
-  `kotlin { androidLibrary { … } }` statt `androidTarget()`.
+- `:shared` — Datenschicht, ViewModel, Rechenlogik, Sicherung, PDF-Layout. Targets Android + JVM.
+- `:composeApp` — die gemeinsame Oberfläche in `commonMain`; `jvmMain` enthält `main.kt` und
+  die Desktop-Seite der Plattform-Schnittstellen, `androidMain` die Android-Seite.
+- `:androidApp` — `MainActivity`, Manifest, `applicationId`. Eigenes Modul, weil AGP 9
+  `com.android.application` nicht mehr mit dem KMP-Plugin im selben Modul zulässt; die
+  KMP-Module nutzen `com.android.kotlin.multiplatform.library` und `kotlin { androidLibrary { … } }`
+  statt `androidTarget()`.
 
 ### Quellsätze im `:shared`-Modul
 
-Der Code liegt **nicht** in `commonMain`, sondern in `jvmCommonMain` (bzw. `jvmCommonTest`) —
-einem Zwischen-Quellsatz zwischen `commonMain` und den beiden Targets. Grund: Entities und
-Rechenlogik nutzen `java.math.BigDecimal`, und `java.*` ist in `commonMain` nicht verfügbar.
-Android und Desktop sind beide JVM-Ziele, deshalb geht das. Neuer gemeinsamer Code gehört
-dorthin — **ein iOS-Target ist bewusst ausgeschlossen**, JVM-APIs im gemeinsamen Code sind
-also dauerhaft in Ordnung.
+Gemeinsamer Code liegt **nicht** in `commonMain`, sondern in `jvmCommonMain` (bzw.
+`jvmCommonTest`) — einem Zwischen-Quellsatz zwischen `commonMain` und den beiden Targets.
+Grund: Entities und Rechenlogik nutzen `java.math.BigDecimal`, `java.io` usw. Ein iOS-Target
+ist bewusst und dauerhaft ausgeschlossen, JVM-APIs im gemeinsamen Code sind also in Ordnung.
+Neuer gemeinsamer Code gehört nach `jvmCommonMain`; Tests, die eine echte Datenbank brauchen,
+nach `jvmTest`.
 
-### Datenschicht (Room, `shared/src/jvmCommonMain/.../shared/data/`)
+Der Room-Compiler ist pro Target eingehängt (`kspJvm`, `kspAndroid`), und die Lint-Tasks
+brauchen ein explizites `dependsOn` auf die KSP-Tasks, sonst bricht `./gradlew build` mit
+"implicit dependency" ab.
 
-Room 2.8 als KMP-Datenbank, Schemaversion 11, Migrationskette ab 3 in `Migrations.kt`,
-exportierte Schemas unter `shared/schemas/`. Kein `fallbackToDestructiveMigration` —
-ein fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
+### Datenschicht (Room, `shared/.../shared/data/`)
+
+Room 2.8 auf beiden Plattformen, Schemaversion 11, Migrationskette ab 3 in `Migrations.kt`,
+exportierte Schemas unter `shared/schemas/`. Kein `fallbackToDestructiveMigration` — ein
+fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
 
 - Migrationen nutzen die KMP-Signatur `migrate(connection: SQLiteConnection)`, **nicht**
   `SupportSQLiteDatabase`.
-- `@ConstructedBy` plus `expect object AppDatabaseConstructor` ohne eigenes `actual` — die
-  Implementierung erzeugt Room je Target.
-- Die Datenbank wird je Plattform erzeugt: `AndroidDatabase.getDatabase(context)` ohne
-  `setDriver` (Android-eigenes SQLite, wie bisher ausgeliefert), `createDesktopDatabase(pfad)`
-  mit `BundledSQLiteDriver`.
+- `@ConstructedBy` plus `expect object AppDatabaseConstructor` ohne eigenes `actual` — Room
+  erzeugt die Implementierung je Target.
+- Android: `AndroidDatabase.getDatabase(context)` ohne `setDriver` (System-SQLite, wie
+  ausgeliefert). Desktop: `DesktopDatabase.get()` → `createDesktopDatabase(pfad)` mit
+  `BundledSQLiteDriver`, Datei im Ordner von `desktopAppDataFolder()` (`%APPDATA%/HonorarCraft`,
+  `~/Library/Application Support/HonorarCraft`, sonst `~/.honorarcraft`).
 - **Jede Änderung an den Entities verändert den `identityHash` und damit das Schema.** Der
-  aktuelle Wert für Version 11 ist `ff3c7c472631b050dd51d3586f067f3a` und stimmt mit dem der
-  ausgelieferten Android-App überein; das ist der Grund, warum bestehende Datenbanken und
-  `.hcbackup`-Dateien lesbar bleiben. Ohne neue Migration und neue Version nichts daran ändern.
+  Wert für Version 11 ist `ff3c7c472631b050dd51d3586f067f3a` und stimmt mit dem der
+  ausgelieferten Android-App überein — deshalb bleiben bestehende Datenbanken und
+  `.hcbackup`-Dateien lesbar. Ohne neue Migration und neue Version nichts daran ändern.
 
-Die Desktop-App nutzt diese Datenschicht **noch nicht** — sie liegt weiterhin auf JSON
-(siehe unten). Der Umstieg samt Importer steht in `KMP_PLAN.md`.
+**Sicherung** (`shared/.../backup/Backup.kt`, Endung `.hcbackup`): `export` und `import` arbeiten
+auf beliebigen Streams; der Import prüft die Datei, sichert den alten Stand, rollt bei Fehlern
+zurück und hebt ältere Stände über die Migrationskette. Nach einem Import muss die App neu
+starten (`PlatformServices.restartApp()`), weil die Room-Flows an der geschlossenen Verbindung
+hängen. Sicherungen sind zwischen Android und Desktop austauschbar.
+
+### Geldbeträge und die UE/Stunden-Namensfalle
+
+Das Feld `InvoiceEntry.lessonUnits` heißt zwar so, enthält aber **Zeitstunden**. Erst
+`InvoiceWithEntries` rechnet in 45-Minuten-Unterrichtseinheiten um (`× 60 / 45`, intern mit 10
+Nachkommastellen). Der Spaltenname ist Teil des Schemas — nicht umbenennen.
+
+Alle Beträge sind `BigDecimal`. **Gerundet wird einmal am Ende** (`setScale(2, HALF_UP)` auf
+der Gesamtsumme), nicht je Position — `CalculationTest` hält das fest (3 × 1 h zu 23 € =
+92,00 €, nicht 92,01 €). Der Honorarsatz steht je Position (`rate`, Vorgabe 23,00).
+Die UE-Spalte im PDF zeigt bewusst gerundete Zwischenwerte; die Summe ist trotzdem exakt.
+
+Rechnungsnummern-Formate (laufend, mit Jahr, mit Jahr und Monat) in `InvoiceNumber.kt`.
 
 ### Gemeinsames ViewModel
 
 `shared/.../MainViewModel.kt` hält den Zustand für beide Plattformen. Datenbank und
-`Settings` werden hereingereicht, nicht aus einem `Application`-Objekt gezogen — deshalb
-läuft es im Test ohne Emulator. Was daraus folgt:
+`Settings` werden hereingereicht — deshalb läuft es im Test ohne Emulator.
 
 - `Settings` ist eine gewöhnliche Schnittstelle, kein `expect/actual`: `AndroidSettings`
   (SharedPreferences, Dateiname "settings" — unverändert, sonst verlieren bestehende Geräte
-  ihre Rechnungsnummer), `PreferencesSettings` (`java.util.prefs`) und `InMemorySettings`.
-- Nutzermeldungen laufen über den `SharedFlow<String>` `messages` statt über `Toast`; die
-  Oberfläche entscheidet, ob daraus ein Toast oder eine Snackbar wird. Der Flow hat **kein**
-  Replay — ein Sammler muss stehen, bevor gemeldet wird.
+  ihre Rechnungsnummer), `PreferencesSettings` (`java.util.prefs`, Knoten
+  `de/v404/honorarcraft/settings`, schreibt nach jedem `put` sofort per `flush()`) und
+  `InMemorySettings`.
+- Nutzermeldungen laufen über den `SharedFlow<String>` `messages` und werden in
+  `HonorarCraftApp` als Snackbar gezeigt. Der Flow hat **kein** Replay — ein Sammler muss
+  stehen, bevor gemeldet wird.
 - Fehler gehen über `expect fun logError` (Android: Logcat, Desktop: stderr).
-- PDF-Erzeugung und Backup sind bewusst **nicht** im ViewModel; sie bleiben plattformeigen
-  und rufen danach `incrementInvoiceNumber()` bzw. `showMessage(...)`.
+- PDF-Erzeugung und Sicherung sind bewusst **nicht** im ViewModel; sie laufen über
+  `PlatformServices` und rufen danach `incrementInvoiceNumber()` bzw. `showMessage(...)`.
 - Um Room-Aufrufe gehört **kein** `withContext(Dispatchers.IO)` — Room legt suspend-Abfragen
-  selbst auf den Abfrage-Kontext der Datenbank. Tests reichen diesen Kontext über
-  `createDesktopDatabase(path, queryContext)` herein, sonst laufen die Abfragen an der
-  Testuhr vorbei.
+  selbst auf seinen Abfrage-Kontext. Tests reichen diesen über
+  `createDesktopDatabase(path, queryContext)` herein, sonst laufen die Abfragen an der Testuhr
+  vorbei.
 
-### Navigation
+### Oberfläche (`composeApp/src/commonMain/.../ui/`)
 
-`main.kt` öffnet ein einziges `Window` und wechselt die Screens über einen `String`-State innerhalb eines
-`AnimatedContent`: `"second"` → `Dashboard`, `"data"` → `DataWindowContent`, `"third"` → `InvoiceGenerator`.
-Es gibt keine Navigations-Bibliothek; ein neuer Screen bedeutet einen neuen Zweig in diesem `when` plus einen von
-`main.kt` durchgereichten Callback. Die Screens sind einfache `@Composable`-Funktionen mit eigenem `remember`-State —
-trotz der Lifecycle-Abhängigkeiten werden keine ViewModels verwendet.
+`HonorarCraftApp(viewModel)` ist der gemeinsame Rahmen; `main.kt` (Desktop) und `MainActivity`
+rufen nur ihn auf. Vier Bereiche — Übersicht (`Dashboard`), Erstellen (`EntryWindow`), PDF
+(`CreateInvoice`), Daten (`DataWindow`) —, der aktive Tab liegt im ViewModel
+(`selectedTabIndex`, mit Rückfrage bei ungespeicherten Änderungen über `pendingTabIndex`).
+Keine Navigations-Bibliothek. Die Navigation hängt allein an der Fensterbreite: ab 900 dp eine
+Seitenleiste, darunter ein `HorizontalPager` mit Leiste unten — auch auf dem Desktop, wenn das
+Fenster schmal ist.
 
-### Persistenz (zwei Speicher, beide außerhalb des Projekts)
+Plattformunterschiede laufen über `ui/platform/` mit `expect`/`actual`:
+- `PlatformServices` (Schnittstelle, per `LocalPlatformServices` bereitgestellt) — Datei-Dialoge,
+  PDF ablegen, Sicherung, Neustart. Eine Schnittstelle statt `expect object`, weil Android seine
+  Dialoge über `rememberLauncherForActivityResult` in der Komposition anmelden muss.
+- `rememberMainViewModel()` — baut das ViewModel; auf dem Desktop startet es außerdem den
+  einmaligen Import der Altdaten (siehe unten).
+- `pdfPath` enthält auf dem Desktop einen Dateipfad, auf Android eine `content://`-Adresse.
 
-`getAppDataFolder()` (`Dashboard.kt`) ermittelt das betriebssystemabhängige Datenverzeichnis:
-`%APPDATA%/HonorarCraft`, `~/Library/Application Support/HonorarCraft`, sonst `~/.honorarcraft`. Darin:
+### PDF-Export (`shared/.../pdf/`)
 
-- `company.json` — alle Einstellungen, atomar über `.tmp` + Rename geschrieben (`CompanyData.kt`)
-- `last_invoice_number.txt` — Rechnungszähler, wird nach jedem PDF automatisch erhöht
-- `invoices/invoice_<nr>.json` — die `InvoiceEntry`-Liste einer Rechnung
-- `totals/year_<jahr>.json` — flache Map Rechnungsnummer → Summe; der reservierte Key `"S"` enthält den manuell
-  eingetragenen Jahres-Startwert und wird von `calculateYearlyTotal` mit aufsummiert
-
-Der Rest liegt in `java.util.prefs.Preferences`, und zwar unter **zwei voneinander unabhängigen Nodes**:
-`app/accounting/honorarcraft` (der AES-`vault_key`; der Knotenname ist trotz der Paketumbenennung
-absichtlich unverändert geblieben — sonst wären bestehende Installationen ihre verschlüsselten
-Felder los) und `app/honorarcraft/teaching_suggestions` (zuletzt genutzte
-Fächer-Vorschläge mit 40-Tage-Verfall, serialisiert als `fach|timestamp`, verbunden mit `;;;`, plus der Schalter
-`show_ue_label`).
-
-`SuggestionsManager.resetToFactorySettings()` löscht den kompletten App-Ordner und leert den Vorschlags-Node.
-
-### Verschlüsselung
-
-`CryptoHelper` (`CompanyData.kt`) verwendet AES mit einem zufälligen 16-Byte-Schlüssel, der Base64-kodiert in den
-Preferences liegt. Die Identitätsfelder des Rechnungsstellers sowie IBAN, BIC und Steuernummer werden verschlüsselt
-gespeichert. `encrypt` und `decrypt` schlucken beide jede Exception und geben `""` zurück — ein verlorener oder
-ausgetauschter Schlüssel leert die Felder also still, statt einen Fehler zu melden. **Die verschlüsselten Felder sind
-in `loadCompanyData` und `saveCompanyData` von Hand aufgelistet** — ein neues Feld muss in beiden Listen ergänzt
-werden, sonst wird es im Klartext geschrieben bzw. unbrauchbar zurückgelesen.
-
-### Geldbeträge und die UE/Stunden-Namensfalle
-
-Alle Beträge sind `BigDecimal` mit `setScale(2, HALF_UP)`, und die Summen addieren bereits gerundete Einzelwerte
-(siehe `InvoiceData.kt`) — das muss so bleiben, die README bewirbt die Cent-Genauigkeit als Feature.
-
-Die Namen in `InvoiceData` sind gegenüber der UI vertauscht: `calculateCorrectedHours` rechnet Zeitstunden in
-45-Minuten-Unterrichtseinheiten um (`×60/45`), `calculateCorrectedLessonUnits` ist die Identitätsfunktion. Folglich
-nutzt der Code bei **aktivem** `showUELabel`-Schalter (Nutzer gibt direkt Unterrichtseinheiten ein)
-`totalCostsLessonUnits` / `totalHours` und bei **inaktivem** Schalter `totalCostsHours` / `totalLessonUnit`. Vor jeder
-Änderung an diesen Werten den tatsächlichen Aufruf nachverfolgen.
-
-Das Jahr, unter dem eine Summe abgelegt wird, stammt aus `date.takeLast(4)` des `dd.MM.yyyy`-Strings des Eintrags,
-mit dem aktuellen Jahr als Fallback.
-
-### PDF-Export
-
-`createInvoicePdf.kt` baut die Rechnung mit PDFBox 2.0.30 über absolute Koordinaten auf einer A4-Seite auf
-(lokale Hilfsfunktionen wie `drawTextWrapped` übernehmen den Zeilenumbruch). Die Roboto-TTFs werden über den
-**ClassLoader** aus `src/jvmMain/resources/font/` geladen; fehlen sie, greift der Fallback auf Helvetica — und damit
-brechen die Umlaute. Das Unterschriftsbild kommt aus dem konfigurierten `signaturePath`, die Ausgabe landet in
-`companyData.pdfPath` (Standard `~/Dokumente/Honorarabrechnungen`, unter Windows `Documents/...`).
+`InvoiceLayout.build(...)` erzeugt plattformunabhängig ein `PdfDocumentModel` (absolute
+Koordinaten auf A4); die Renderer zeichnen nur noch: Desktop mit PDFBox, Android mit
+`android.graphics.pdf.PdfDocument` (`expect fun writeInvoicePdf` / `pdfTextMeasurer`). Das Layout
+braucht die Plattform nur zum Messen von Textbreiten. Beide Renderer laden Roboto aus
+`shared/src/{jvmMain,androidMain}/resources/font/` per ClassLoader; fehlt die Datei, fällt der
+Desktop auf Helvetica zurück — dann brechen die Umlaute. `InvoiceLayoutTest` prüft das Layout.
 
 ### Theme (`composeApp/src/commonMain/.../ui/theme/`)
 
-`HonorarCraftTheme` gilt für beide Plattformen. Die einzige plattformabhängige Stelle sind
-Androids dynamische Systemfarben: `expect fun dynamicColorSchemeOrNull(darkTheme)` liefert auf
-Android ab API 31 ein Schema, auf dem Desktop `null` — dann greift das statische Schema.
+`HonorarCraftTheme` sitzt **innerhalb** von `HonorarCraftApp`, weil die Darstellung
+(`ThemeMode`: SYSTEM/LIGHT/DARK) aus dem ViewModel kommt. Dynamische Systemfarben über
+`expect fun dynamicColorSchemeOrNull` (Android ab 12, Desktop `null` → statisches Schema).
+Die Schrift Montserrat wird als TTF in `commonMain/composeResources/font/` mitgeliefert, weil
+der Google-Fonts-Provider nur auf Android existiert.
 
-- Die Schrift **Montserrat wird als TTF mitgeliefert** (`commonMain/composeResources/font/`),
-  nicht über den Google-Fonts-Provider geladen: den gibt es nur auf Android.
-- Das Farbschema ist noch das unveränderte Compose-Vorlagen-Lila. Die Markenfarben
-  `BrandCyan`/`BrandGreen` (aus dem Launcher-Icon) sind in `Color.kt` vorhanden, werden aber
-  von keinem Schema benutzt.
-- **Der Desktop läuft fest im Hellmodus** (`HonorarCraftTheme(darkTheme = false)` in `main.kt`).
-  Die Screens in `jvmMain` tragen noch rund drei Dutzend fest verdrahtete Farben; Dunkelmodus
-  darüber wäre halb unlesbar. Der Parameter kann weg, sobald diese Screens ersetzt sind.
+### Ressourcen — zwei Mechanismen
 
-### Ressourcen — zwei unterschiedliche Mechanismen
+Compose Resources in `composeApp/src/commonMain/composeResources/` (Schrift) und
+`composeApp/src/jvmMain/composeResources/` (Fenster-Icon, Installer-Icons `.ico`/`.icns`/`.png`
+aus `build.gradle.kts` — taugen nicht als Android-Drawables). Erreichbar über `Res.*` im Paket
+`de.v404.honorarcraft.resources` (in `composeApp/build.gradle.kts` festgelegt). Die
+PDF-Schriften sind dagegen klassische Classpath-Ressourcen im `:shared`-Modul. Nicht zwischen
+den Mechanismen verschieben.
 
-Compose Resources liegen in **zwei** Quellsätzen: `src/commonMain/composeResources/` (die
-Schriftdatei, für beide Plattformen) und `src/jvmMain/composeResources/` (App-Icon, Hintergrund,
-die in der `build.gradle.kts` referenzierten Installer-Icons — `.ico`/`.icns` taugen nicht als
-Android-Drawables und müssen deshalb dort bleiben). Beides ist erreichbar über `Res.*`
-im Paket `de.v404.honorarcraft.resources` — dieses Paket ist in `composeApp/build.gradle.kts`
-festgelegt, sonst leitet Compose es vom Gradle-Projektnamen ab. `src/jvmMain/resources/` ist
-ein klassischer Classpath-Ressourcen-Root, den PDFBox für die Schriftarten nutzt. Dateien nicht zwischen beiden
-verschieben.
+### Altbestand der Desktop-Fassung bis 1.2.1 (`shared/src/jvmMain/.../legacy/`)
+
+Die alte Desktop-App speicherte JSON-Dateien (`company.json`, `invoices/`, `totals/`,
+`last_invoice_number.txt`) im selben Datenordner und verschlüsselte Identitätsfelder, IBAN, BIC
+und Steuernummer per AES — Schlüssel als `vault_key` in `java.util.prefs` unter
+`app/accounting/honorarcraft`. `LegacyDesktopImport` übernimmt das beim ersten Start einmalig
+in Room (`LegacyVaultCrypto` entschlüsselt dafür) und benennt den Altbestand in
+`vor-room-<datum>/` um, statt ihn zu löschen. Manuelle Jahres-Startwerte (Schlüssel `"S"` in
+`totals/`) haben kein Gegenstück in Room und werden nur gemeldet. Seit 2.0 gibt es **keine**
+Feldverschlüsselung mehr; den Preferences-Knoten `app/accounting/honorarcraft` nicht leeren,
+solange noch unimportierte Altinstallationen denkbar sind.
