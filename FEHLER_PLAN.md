@@ -4,6 +4,11 @@ Stand: 13.11.2026. Noch nichts umgesetzt. Grundlage ist eine vollständige Durch
 auf Stand `384a9c7` (Version 2.1). Die CI war auf diesem Stand grün; die Fehler unten fallen
 in keinem bestehenden Test auf.
 
+**Stand 15.11.2026:** Noch nichts umgesetzt, die vier Entscheidungen unten hat Julian noch
+nicht bestätigt — vor Phase 1 nachfragen. Umsetzung auf dem Rechner mit JDK 17 und
+`~/Android/Sdk` (der Windows-Arbeitslaptop hat beides nicht). Auf einem eigenen Branch
+arbeiten und erst nach grüner CI nach `main` mergen.
+
 Zeilenangaben beziehen sich auf `384a9c7` und verschieben sich mit jeder Änderung — vor dem
 Ändern die Stelle neu suchen.
 

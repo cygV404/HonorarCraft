@@ -18,7 +18,10 @@ Planungsdokumente im Wurzelverzeichnis:
 - `KMP_PLAN.md` — der abgeschlossene Umbau zu KMP (Version 2.0). Begründungen für Architektur-,
   Datenhaltungs- und Rechenentscheidungen stehen dort; vor Änderungen in diesen Bereichen lesen.
 - `KUNDEN_PLAN.md` — mehrere Kunden (umgesetzt in 2.1); Entscheidungen und Begründungen.
-- `WLAN_PLAN.md` — nächstes Vorhaben: Sicherung über das lokale Netz übertragen (kein Sync).
+- `FEHLER_PLAN.md` — **nächstes Vorhaben vor allem anderen:** neun Fehler und neun kleinere
+  Punkte aus der Durchsicht vom 13.11.2026, Ziel 2.1.1 ohne Schemaänderung. Noch nicht
+  begonnen; die vier Entscheidungen darin sind noch nicht bestätigt.
+- `WLAN_PLAN.md` — danach: Sicherung über das lokale Netz übertragen (kein Sync).
 
 Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, Version 2.1,
 Paket überall `de.v404.honorarcraft`, `minSdk` 29, `targetSdk` 36, `compileSdk` 37.
