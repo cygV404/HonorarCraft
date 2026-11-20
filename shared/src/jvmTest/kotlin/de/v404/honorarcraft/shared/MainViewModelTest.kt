@@ -382,4 +382,136 @@ class MainViewModelTest {
         assertEquals("DE12", firma.billerIban)
         assertEquals(" /a.png ", firma.signaturePath, "Pfade bleiben unangetastet")
     }
+
+    private suspend fun rechnungMitEintrag(nummer: String, kundeId: Long) {
+        db.invoiceDao().insertInvoice(InvoiceData(nummer, kundeId))
+        db.invoiceDao().insertEntry(
+            InvoiceEntry(
+                invoiceNumber = nummer,
+                date = "02.09.2026",
+                lessonUnits = BigDecimal("1"),
+                teachingSubject = "Mathe",
+                rate = BigDecimal("23.00"),
+            )
+        )
+    }
+
+    @Test
+    fun `eine Rechnung aus einem anderen Format laesst sich oeffnen`() = test {
+        val id = kunde("A")
+        // Je Format eine Nummer, die in den beiden anderen Formaten nicht darstellbar ist.
+        val nummern = mapOf(
+            InvoiceFormat.NUMBER to "01",
+            InvoiceFormat.YEAR_NUMBER to "2025-02",
+            InvoiceFormat.YEAR_MONTH_NUMBER to "2024-11-03",
+        )
+        nummern.values.forEach { rechnungMitEintrag(it, id) }
+        val vm = viewModel()
+
+        for (format in InvoiceFormat.entries) {
+            vm.setInvoiceFormat(format)
+            for ((_, nummer) in nummern) {
+                vm.openInvoice(nummer)
+                testScheduler.advanceUntilIdle()
+                assertEquals(
+                    nummer,
+                    vm.currentInvoiceWithEntries.value?.invoice?.invoiceNumber,
+                    "Format $format, Nummer $nummer"
+                )
+                assertEquals(1, vm.currentInvoiceWithEntries.value?.entries?.size)
+            }
+        }
+    }
+
+    @Test
+    fun `Plus in der Uebersicht verlaesst die woertlich geoeffnete Rechnung`() = test {
+        rechnungMitEintrag("2024-11-03", kunde("A"))
+        val vm = viewModel()
+        vm.setSelectedInvoiceNumber("7")
+        vm.openInvoice("2024-11-03")
+        testScheduler.advanceUntilIdle()
+        assertEquals("2024-11-03", vm.formattedInvoiceNumber.value)
+        assertEquals("07", vm.selectedInvoiceNumber.value, "Laufende Nummer bleibt unberührt")
+
+        vm.setSelectedInvoiceNumber("08")
+        testScheduler.advanceUntilIdle()
+        assertEquals("08", vm.formattedInvoiceNumber.value)
+        assertNull(vm.currentInvoiceWithEntries.value)
+    }
+
+    @Test
+    fun `woertlich geoeffnete Nummer ueberlebt keinen Neustart`() = test {
+        rechnungMitEintrag("2024-11-03", kunde("A"))
+        val vm = viewModel()
+        vm.setSelectedInvoiceNumber("7")
+        vm.openInvoice("2024-11-03")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("07", viewModel().formattedInvoiceNumber.value)
+    }
+
+    @Test
+    fun `PDF einer alten Rechnung verstellt die laufende Nummer nicht`() = test {
+        val id = kunde("A")
+        listOf("01", "02", "03").forEach { rechnungMitEintrag(it, id) }
+        val vm = viewModel()
+
+        vm.setSelectedInvoiceNumber("02")
+        vm.nachPdfWeiterschalten()
+        assertEquals("02", vm.selectedInvoiceNumber.value, "03 gibt es schon")
+
+        vm.setSelectedInvoiceNumber("03")
+        vm.nachPdfWeiterschalten()
+        assertEquals("04", vm.selectedInvoiceNumber.value)
+    }
+
+    @Test
+    fun `PDF einer woertlich geoeffneten Rechnung schliesst sie nur`() = test {
+        rechnungMitEintrag("2024-11-03", kunde("A"))
+        val vm = viewModel()
+        vm.setSelectedInvoiceNumber("07")
+        vm.openInvoice("2024-11-03")
+        testScheduler.advanceUntilIdle()
+
+        vm.nachPdfWeiterschalten()
+        testScheduler.advanceUntilIdle()
+        assertEquals("07", vm.formattedInvoiceNumber.value)
+    }
+
+    @Test
+    fun `Loeschen der angezeigten Rechnung laesst die Nummer stehen`() = test {
+        val id = kunde("A")
+        val vm = viewModel()
+        vm.setInvoiceFormat(InvoiceFormat.YEAR_NUMBER)
+        vm.setInvoiceYear(2026)
+        vm.setSelectedInvoiceNumber("05")
+        rechnungMitEintrag("2026-05", id)
+        rechnungMitEintrag("01", id)
+        testScheduler.advanceUntilIdle()
+
+        vm.deleteInvoice("2026-05")
+        testScheduler.advanceUntilIdle()
+        assertEquals("2026-05", vm.formattedInvoiceNumber.value)
+        assertNull(vm.currentInvoiceWithEntries.value)
+
+        vm.openInvoice("01")
+        testScheduler.advanceUntilIdle()
+        vm.deleteInvoice("01")
+        testScheduler.advanceUntilIdle()
+        assertEquals("2026-05", vm.formattedInvoiceNumber.value, "geöffnete Nummer geschlossen")
+    }
+
+    @Test
+    fun `Doppeltipp auf Hinzufuegen legt nur einen Eintrag an`() = test {
+        kunde("A")
+        val vm = viewModel()
+        testScheduler.advanceUntilIdle()
+
+        vm.updateInvoiceForm(date = "02.09.2026", hours = "3", subject = "Mathe")
+        vm.addEntryFromForm()
+        vm.addEntryFromForm()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, vm.currentInvoiceWithEntries.value?.entries?.size)
+    }
 }

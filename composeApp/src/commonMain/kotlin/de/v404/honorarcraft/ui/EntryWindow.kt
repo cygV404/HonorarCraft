@@ -95,7 +95,7 @@ fun EntryWindowScreen(
         isLoading = isLoading,
         invoiceYear = invoiceYear,
         invoiceMonth = invoiceMonth,
-        onInvoiceSelect = { mainViewModel.setSelectedInvoiceNumber(it) },
+        onInvoiceSelect = { mainViewModel.openInvoice(it) },
         onGeneratePdf = { cd, iwe ->
             scope.launch {
                 // Nach dem Einlesen einer Sicherung von einem anderen Gerät zeigt der Pfad
@@ -113,9 +113,9 @@ fun EntryWindowScreen(
                 }
                 ergebnis.onSuccess { ort ->
                     mainViewModel.showMessage("PDF gespeichert unter $ort")
-                    // Erst nach dem erfolgreichen Schreiben hochzaehlen, sonst springt die
+                    // Erst nach dem erfolgreichen Schreiben weiterschalten, sonst springt die
                     // Nummer bei einem Fehlschlag weiter.
-                    mainViewModel.incrementInvoiceNumber()
+                    mainViewModel.nachPdfWeiterschalten()
                 }.onFailure { fehler ->
                     mainViewModel.showMessage(
                         "PDF konnte nicht erstellt werden: ${fehler.message ?: fehler::class.simpleName}"
