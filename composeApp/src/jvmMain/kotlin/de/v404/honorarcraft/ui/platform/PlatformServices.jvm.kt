@@ -9,6 +9,7 @@ import de.v404.honorarcraft.shared.pdf.createInvoicePdf
 import de.v404.honorarcraft.shared.pdf.pdfDateiname
 import de.v404.honorarcraft.shared.data.DesktopDatabase
 import de.v404.honorarcraft.shared.desktopAppDataFolder
+import de.v404.honorarcraft.shared.legeUnterschriftAb
 import de.v404.honorarcraft.shared.logError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,7 +26,9 @@ import javax.swing.filechooser.FileNameExtensionFilter
  */
 class DesktopPlatformServices : PlatformServices {
 
-    override suspend fun pickSignatureImage(): String? = withContext(Dispatchers.IO) {
+    override val neustartIstBeenden: Boolean = true
+
+    override suspend fun pickSignatureImage(gespeicherterPfad: String): String? = withContext(Dispatchers.IO) {
         val chooser = JFileChooser().apply {
             dialogTitle = "Unterschrift als Bild auswählen"
             fileFilter = FileNameExtensionFilter("Bilddateien", "png", "jpg", "jpeg")
@@ -37,9 +40,12 @@ class DesktopPlatformServices : PlatformServices {
         runCatching {
             // Kopiert, nicht verlinkt: verschiebt der Nutzer das Original, soll die
             // Unterschrift auf der Rechnung trotzdem noch da sein.
-            val ziel = File(desktopAppDataFolder(), "unterschrift." + quelle.extension.ifBlank { "png" })
-            quelle.copyTo(ziel, overwrite = true)
-            ziel.absolutePath
+            legeUnterschriftAb(
+                quelle = quelle.inputStream(),
+                endung = quelle.extension,
+                zielordner = desktopAppDataFolder(),
+                gespeicherterPfad = gespeicherterPfad,
+            ).absolutePath
         }.onFailure {
             logError("PlatformServices", "Unterschrift konnte nicht kopiert werden", it)
         }.getOrNull()

@@ -21,11 +21,16 @@ interface PlatformServices {
     /**
      * Lässt ein Bild auswählen und kopiert es in den Datenbereich der App.
      *
+     * Jede Kopie bekommt einen eigenen Namen, und die Datei unter [gespeicherterPfad] (die in
+     * den Firmendaten gespeicherte, nicht der Entwurf) bleibt liegen — so wechselt die
+     * Vorschau sofort, und „Verwerfen“ holt die alte Unterschrift zurück. Siehe
+     * `legeUnterschriftAb`.
+     *
      * @return Pfad der Kopie. Kopiert wird, weil die Auswahl auf Android nur ein
      *   kurzlebiges Zugriffsrecht auf eine fremde Datei ist — ein gemerkter Pfad dorthin
      *   wäre beim nächsten Start wertlos.
      */
-    suspend fun pickSignatureImage(): String?
+    suspend fun pickSignatureImage(gespeicherterPfad: String): String?
 
     /** Lässt einen Speicherort wählen und schreibt die Sicherung dorthin. */
     suspend fun exportBackup(): Result<Long>?
@@ -67,6 +72,12 @@ interface PlatformServices {
      * Verbindung und würden sonst nur noch leere Listen zeigen.
      */
     fun restartApp()
+
+    /**
+     * `true`, wenn [restartApp] die Anwendung nur beendet (Desktop) und der Nutzer sie selbst
+     * wieder öffnen muss. Die Oberfläche sagt das dann vorher und wartet auf ein „OK“.
+     */
+    val neustartIstBeenden: Boolean
 }
 
 val LocalPlatformServices = staticCompositionLocalOf<PlatformServices> {

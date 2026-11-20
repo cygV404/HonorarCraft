@@ -19,6 +19,7 @@ import de.v404.honorarcraft.shared.data.InvoiceWithEntries
 import de.v404.honorarcraft.shared.pdf.createInvoicePdf
 import de.v404.honorarcraft.shared.pdf.pdfDateiname
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
+import de.v404.honorarcraft.shared.legeUnterschriftAb
 import de.v404.honorarcraft.shared.logError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -65,18 +66,22 @@ private class AndroidPlatformServices(
         return bezeichner?.substringAfter(':')?.ifBlank { null } ?: pdfPath
     }
 
-    override suspend fun pickSignatureImage(): String? {
+    override val neustartIstBeenden: Boolean = false
+
+    override suspend fun pickSignatureImage(gespeicherterPfad: String): String? {
         val uri = pickImage() ?: return null
         return withContext(Dispatchers.IO) {
             runCatching {
                 // Kopiert, weil die Auswahl nur ein kurzlebiges Zugriffsrecht auf eine fremde
                 // Datei ist - ein gemerkter Pfad dorthin waere beim naechsten Start wertlos.
-                val ziel = File(context.filesDir, "unterschrift.png")
-                context.contentResolver.openInputStream(uri).use { input ->
-                    checkNotNull(input) { "Datei konnte nicht geöffnet werden" }
-                    ziel.outputStream().use { out -> input.copyTo(out) }
-                }
-                ziel.absolutePath
+                val input = context.contentResolver.openInputStream(uri)
+                checkNotNull(input) { "Datei konnte nicht geöffnet werden" }
+                legeUnterschriftAb(
+                    quelle = input,
+                    endung = "png",
+                    zielordner = context.filesDir,
+                    gespeicherterPfad = gespeicherterPfad,
+                ).absolutePath
             }.onFailure {
                 logError("PlatformServices", "Unterschrift konnte nicht kopiert werden", it)
             }.getOrNull()
