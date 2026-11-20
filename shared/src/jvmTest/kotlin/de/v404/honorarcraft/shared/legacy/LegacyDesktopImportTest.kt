@@ -191,4 +191,20 @@ class LegacyDesktopImportTest {
         assertFalse(LegacyDesktopImport.hasLegacyData(folder))
         assertNull(LegacyDesktopImport.run(folder, db, crypto))
     }
+
+    @Test
+    fun `liegengebliebener Altbestand wird nicht doppelt uebernommen`() = test {
+        writeLegacyData()
+        LegacyDesktopImport.run(folder, db, crypto, LocalDate.of(2026, 9, 13))!!
+        val rechnungen = db.invoiceDao().getAllInvoiceNumbers().first()
+        val kunden = db.customerDao().getAllCustomers().first()
+
+        // Als wäre das Verschieben gescheitert: der Altbestand liegt wieder da.
+        writeLegacyData()
+        assertTrue(File(folder, LegacyDesktopImport.MARKIERUNG).isFile)
+        assertFalse(LegacyDesktopImport.hasLegacyData(folder))
+        assertNull(LegacyDesktopImport.run(folder, db, crypto, LocalDate.of(2026, 9, 14)))
+        assertEquals(rechnungen, db.invoiceDao().getAllInvoiceNumbers().first())
+        assertEquals(kunden, db.customerDao().getAllCustomers().first())
+    }
 }

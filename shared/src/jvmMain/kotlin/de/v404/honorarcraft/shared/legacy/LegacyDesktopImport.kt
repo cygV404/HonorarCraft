@@ -6,6 +6,7 @@ import de.v404.honorarcraft.shared.data.Customer
 import de.v404.honorarcraft.shared.data.Constants
 import de.v404.honorarcraft.shared.data.InvoiceData
 import de.v404.honorarcraft.shared.data.InvoiceEntry
+import de.v404.honorarcraft.shared.logError
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -70,12 +71,19 @@ object LegacyDesktopImport {
         val archivedTo: File,
     )
 
+    /**
+     * Wird nach den Datenbank-Schreibzugriffen und **vor** dem Wegräumen angelegt. Scheitert
+     * das Verschieben (Datei gesperrt, fehlende Rechte), legte der nächste Start sonst alle
+     * Positionen und den Kunden noch einmal an.
+     */
+    const val MARKIERUNG = "altdaten-uebernommen"
+
     /** Liegt im Ordner noch etwas, das übernommen werden müsste? */
     fun hasLegacyData(folder: File): Boolean =
-        File(folder, "company.json").isFile ||
+        !File(folder, MARKIERUNG).exists() && (File(folder, "company.json").isFile ||
             File(folder, "invoices").isDirectory ||
             File(folder, "totals").isDirectory ||
-            File(folder, "last_invoice_number.txt").isFile
+            File(folder, "last_invoice_number.txt").isFile)
 
     /**
      * Übernimmt alles Vorgefundene und verschiebt den Altbestand anschließend nach
@@ -218,11 +226,16 @@ object LegacyDesktopImport {
             ?.takeIf { it.isNotEmpty() }
 
         // --- Altbestand beiseiteräumen -------------------------------------------
+        File(folder, MARKIERUNG).writeText(
+            "Altbestand am $today in die Datenbank übernommen. Diese Datei nicht löschen.\n"
+        )
         val archive = File(folder, "vor-room-" + today.format(DateTimeFormatter.ISO_LOCAL_DATE))
         archive.mkdirs()
         listOf("company.json", "invoices", "totals", "last_invoice_number.txt").forEach { name ->
             val source = File(folder, name)
-            if (source.exists()) source.renameTo(File(archive, name))
+            if (source.exists() && !source.renameTo(File(archive, name))) {
+                logError("LegacyDesktopImport", "Altbestand $source konnte nicht nach $archive verschoben werden")
+            }
         }
 
         return Report(

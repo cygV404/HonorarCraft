@@ -48,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -143,6 +144,10 @@ fun DashboardContent(
         var editYear by remember { mutableStateOf(invoiceYear.toString()) }
         var editMonth by remember { mutableStateOf(String.format(Locale.GERMANY, "%02d", invoiceMonth)) }
         var editNumber by remember { mutableStateOf(rawInvoiceNumber) }
+        val zeigtJahr = invoiceFormat == InvoiceFormat.YEAR_NUMBER ||
+            invoiceFormat == InvoiceFormat.YEAR_MONTH_NUMBER
+        val zeigtMonat = invoiceFormat == InvoiceFormat.YEAR_MONTH_NUMBER
+        val monatGueltig = !zeigtMonat || editMonth.toIntOrNull() in 1..12
 
         AlertDialog(
             onDismissRequest = { showEditInvoiceDialog = false },
@@ -153,11 +158,11 @@ fun DashboardContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    if (invoiceFormat == InvoiceFormat.YEAR_NUMBER || invoiceFormat == InvoiceFormat.YEAR_MONTH_NUMBER) {
+                    if (zeigtJahr) {
                         OutlinedTextField(
                             value = editYear,
                             onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) editYear = it },
-                            modifier = Modifier.width(85.dp),
+                            modifier = Modifier.width(85.dp).testTag("rechnungJahr"),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center)
@@ -165,12 +170,13 @@ fun DashboardContent(
                         Text(" - ", style = MaterialTheme.typography.headlineSmall)
                     }
 
-                    if (invoiceFormat == InvoiceFormat.YEAR_MONTH_NUMBER) {
+                    if (zeigtMonat) {
                         OutlinedTextField(
                             value = editMonth,
                             onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) editMonth = it },
-                            modifier = Modifier.width(60.dp),
+                            modifier = Modifier.width(60.dp).testTag("rechnungMonat"),
                             singleLine = true,
+                            isError = !monatGueltig,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center)
                         )
@@ -180,7 +186,7 @@ fun DashboardContent(
                     OutlinedTextField(
                         value = editNumber,
                         onValueChange = { if (it.all { c -> c.isDigit() }) editNumber = it },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).testTag("rechnungNummer"),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center)
@@ -188,12 +194,15 @@ fun DashboardContent(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = monatGueltig, onClick = {
                     val y = editYear.toIntOrNull() ?: invoiceYear
                     val m = editMonth.toIntOrNull() ?: invoiceMonth
                     if (editNumber.isNotEmpty()) {
-                        onInvoiceYearChange(y)
-                        onInvoiceMonthChange(m)
+                        // Jahr und Monat nur speichern, wenn sie zu sehen sind und geändert
+                        // wurden. Sonst stünden sie ab dem ersten „Speichern“ fest, statt dem
+                        // Kalender zu folgen.
+                        if (zeigtJahr && y != invoiceYear) onInvoiceYearChange(y)
+                        if (zeigtMonat && m != invoiceMonth) onInvoiceMonthChange(m)
                         onInvoiceNumberChange(editNumber)
                     }
                     showEditInvoiceDialog = false

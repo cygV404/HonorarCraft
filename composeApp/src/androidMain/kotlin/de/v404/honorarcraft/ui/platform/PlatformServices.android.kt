@@ -19,6 +19,7 @@ import de.v404.honorarcraft.shared.data.InvoiceWithEntries
 import de.v404.honorarcraft.shared.pdf.createInvoicePdf
 import de.v404.honorarcraft.shared.pdf.pdfDateiname
 import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
+import de.v404.honorarcraft.shared.legeUnterschriftAb
 import de.v404.honorarcraft.shared.logError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -58,25 +59,30 @@ private class AndroidPlatformServices(
     }
 
     override fun describePdfFolder(pdfPath: String): String {
-        if (pdfPath.isBlank()) return "Dokumente/HonorarCraft"
+        // Ein Dateipfad stammt aus einer Sicherung vom Desktop und gilt hier als leer.
+        if (!pdfPath.startsWith("content://")) return "Dokumente/HonorarCraft"
         val uri = runCatching { Uri.parse(pdfPath) }.getOrNull() ?: return pdfPath
         // Der Baum-Bezeichner sieht aus wie "primary:Documents/Rechnungen".
         val bezeichner = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
         return bezeichner?.substringAfter(':')?.ifBlank { null } ?: pdfPath
     }
 
-    override suspend fun pickSignatureImage(): String? {
+    override val neustartIstBeenden: Boolean = false
+
+    override suspend fun pickSignatureImage(gespeicherterPfad: String): String? {
         val uri = pickImage() ?: return null
         return withContext(Dispatchers.IO) {
             runCatching {
                 // Kopiert, weil die Auswahl nur ein kurzlebiges Zugriffsrecht auf eine fremde
                 // Datei ist - ein gemerkter Pfad dorthin waere beim naechsten Start wertlos.
-                val ziel = File(context.filesDir, "unterschrift.png")
-                context.contentResolver.openInputStream(uri).use { input ->
-                    checkNotNull(input) { "Datei konnte nicht geöffnet werden" }
-                    ziel.outputStream().use { out -> input.copyTo(out) }
-                }
-                ziel.absolutePath
+                val input = context.contentResolver.openInputStream(uri)
+                checkNotNull(input) { "Datei konnte nicht geöffnet werden" }
+                legeUnterschriftAb(
+                    quelle = input,
+                    endung = "png",
+                    zielordner = context.filesDir,
+                    gespeicherterPfad = gespeicherterPfad,
+                ).absolutePath
             }.onFailure {
                 logError("PlatformServices", "Unterschrift konnte nicht kopiert werden", it)
             }.getOrNull()
@@ -117,22 +123,31 @@ private class AndroidPlatformServices(
 
         // Hat der Nutzer einen Ordner gewaehlt, wird dorthin geschrieben.
         val gewaehlt = company.pdfPath.takeIf { it.startsWith("content://") }
+        var hinweis = ""
         if (gewaehlt != null) {
-            val baum = Uri.parse(gewaehlt)
-            val ordnerUri = DocumentsContract.buildDocumentUriUsingTree(
-                baum,
-                DocumentsContract.getTreeDocumentId(baum),
-            )
-            val ziel = DocumentsContract.createDocument(
-                context.contentResolver, ordnerUri, "application/pdf", dateiname
-            )
-            checkNotNull(ziel) { "Datei konnte im gewählten Ordner nicht angelegt werden" }
-            val strom = withContext(Dispatchers.IO) {
-                context.contentResolver.openOutputStream(ziel)
+            // Scheitert schon das Anlegen (Zugriffsrecht weg, Ordner geloescht, Sicherung von
+            // einem anderen Geraet), geht es im MediaStore weiter statt gar nicht.
+            val ziel = runCatching {
+                val baum = Uri.parse(gewaehlt)
+                val ordnerUri = DocumentsContract.buildDocumentUriUsingTree(
+                    baum,
+                    DocumentsContract.getTreeDocumentId(baum),
+                )
+                DocumentsContract.createDocument(
+                    context.contentResolver, ordnerUri, "application/pdf", dateiname
+                )
+            }.onFailure {
+                logError("PlatformServices", "Gewählter Ordner nicht erreichbar", it)
+            }.getOrNull()
+            if (ziel != null) {
+                val strom = withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(ziel)
+                }
+                checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
+                createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
+                return@runCatching describePdfFolder(gewaehlt)
             }
-            checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
-            createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
-            return@runCatching describePdfFolder(gewaehlt)
+            hinweis = " — der gewählte Ordner ist nicht erreichbar, bitte unter „Daten“ neu wählen"
         }
 
         val ordner = "${Environment.DIRECTORY_DOCUMENTS}/HonorarCraft"
@@ -148,7 +163,7 @@ private class AndroidPlatformServices(
         val strom = withContext(Dispatchers.IO) { resolver.openOutputStream(ziel) }
         checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
         createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
-        ordner
+        "Dokumente/HonorarCraft$hinweis"
     }.onFailure { logError("PlatformServices", "PDF konnte nicht geschrieben werden", it) }
 
     override fun restartApp() {

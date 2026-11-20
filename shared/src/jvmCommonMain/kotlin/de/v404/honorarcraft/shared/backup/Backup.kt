@@ -8,6 +8,7 @@ import de.v404.honorarcraft.shared.data.DATABASE_FILE_NAME
 import de.v404.honorarcraft.shared.data.DATABASE_VERSION
 import de.v404.honorarcraft.shared.logError
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
@@ -43,6 +44,17 @@ object Backup {
 
     const val MIME_TYPE = "application/octet-stream"
     const val FILE_EXTENSION = "hcbackup"
+
+    /**
+     * Endung der Kopie, die vor jedem Import neben der Datenbank abgelegt wird. Eine
+     * Generation: der nächste Import überschreibt sie. Keine Oberfläche dafür — sie ist der
+     * Rettungsanker, wenn versehentlich die falsche Sicherung eingelesen wurde.
+     */
+    const val VOR_IMPORT_ENDUNG = ".vor-import"
+
+    /** Die Kopie des Stands vor dem letzten Import, siehe [VOR_IMPORT_ENDUNG]. */
+    fun vorImportKopie(databaseFile: File): File =
+        File(databaseFile.parentFile, databaseFile.name + VOR_IMPORT_ENDUNG)
 
     /** Dateiname mit Datum, damit mehrere Sicherungen nebeneinander liegen können. */
     fun suggestedFileName(today: LocalDate = LocalDate.now()): String =
@@ -90,7 +102,7 @@ object Backup {
     ): Result<Int> = withContext(Dispatchers.IO) {
         workDir.mkdirs()
         val kandidat = File(workDir, "import_candidate.db")
-        val sicherung = File(workDir, "pre_import_backup.db")
+        val sicherung = vorImportKopie(databaseFile)
         runCatching {
             // 1. Datei in den Arbeitsordner holen
             source.use { input -> kandidat.outputStream().use { out -> input.copyTo(out) } }
@@ -115,8 +127,7 @@ object Backup {
                 // geschlossen - ohne Neustart wuerde die App nur noch leere Listen zeigen.
                 // Deshalb als eigener Fehlertyp, damit der Aufrufer trotzdem neu startet.
                 throw NeustartNoetigException(
-                    "Einlesen fehlgeschlagen. Der vorherige Stand wurde wiederhergestellt, " +
-                        "die App startet neu.",
+                    "Einlesen fehlgeschlagen. Der vorherige Stand wurde wiederhergestellt.",
                     e
                 )
             }
@@ -124,16 +135,29 @@ object Backup {
         }.onFailure {
             logError(TAG, "Import fehlgeschlagen", it)
         }.also {
+            // Die Vor-Import-Kopie bleibt liegen (eine Generation).
             kandidat.delete()
-            sicherung.delete()
         }
     }
 
+    /**
+     * Schreibt das Write-Ahead-Log in die Hauptdatei. Die erste Spalte des Ergebnisses ist 1,
+     * wenn der Checkpoint blockiert war (etwa durch einen gleichzeitigen Leser) — dann fehlten
+     * der Sicherung die jüngsten Änderungen. Deshalb bis zu dreimal versuchen.
+     */
     private suspend fun checkpoint(database: RoomDatabase) {
-        // PRAGMA wal_checkpoint liefert eine Zeile zurück, deshalb usePrepared statt execSQL.
-        database.useWriterConnection { connection ->
-            connection.usePrepared("PRAGMA wal_checkpoint(TRUNCATE)") { it.step() }
+        repeat(3) { versuch ->
+            // PRAGMA wal_checkpoint liefert eine Zeile zurück, deshalb usePrepared statt execSQL.
+            val blockiert = database.useWriterConnection { connection ->
+                connection.usePrepared("PRAGMA wal_checkpoint(TRUNCATE)") { stmt ->
+                    stmt.step() && stmt.getLong(0) != 0L
+                }
+            }
+            if (!blockiert) return
+            logError(TAG, "WAL-Checkpoint blockiert (Versuch ${versuch + 1})")
+            delay(200)
         }
+        error("Die Sicherung konnte nicht vollständig geschrieben werden. Bitte noch einmal versuchen.")
     }
 
     /**
@@ -167,6 +191,15 @@ object Backup {
             require(fehlend.isEmpty()) {
                 "Die Datei stammt nicht von HonorarCraft (fehlende Tabellen: ${fehlend.joinToString()})."
             }
+
+            // Eine abgeschnittene Datei besteht die Tabellenprüfung, solange die ersten Seiten
+            // lesbar sind. quick_check liest jede Seite.
+            val pruefung = runCatching {
+                db.prepare("PRAGMA quick_check").use { stmt ->
+                    buildList { while (stmt.step()) add(stmt.getText(0)) }
+                }
+            }.getOrNull()
+            require(pruefung == listOf("ok")) { "Die Sicherungsdatei ist beschädigt." }
 
             val version = db.prepare("PRAGMA user_version").use { stmt ->
                 if (stmt.step()) stmt.getInt(0) else 0

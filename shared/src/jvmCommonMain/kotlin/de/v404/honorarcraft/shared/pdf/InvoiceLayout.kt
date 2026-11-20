@@ -60,7 +60,7 @@ object InvoiceLayout {
 
         // --- Absender, rechtsbündig -------------------------------------------------
         fun rechts(text: String, font: PdfFont = PdfFont.REGULAR) {
-            deckblatt += DrawCommand.Text(text, rechtsBuendig, y, font, PdfAlign.RIGHT)
+            deckblatt += DrawCommand.Text(glaetten(text), rechtsBuendig, y, font, PdfAlign.RIGHT)
             y += LINE_HEIGHT
         }
         rechts("${company.billerSecondName} ${company.billerFirstName}", PdfFont.BOLD)
@@ -83,7 +83,7 @@ object InvoiceLayout {
         // --- Titel und Empfänger, linksbündig --------------------------------------
         y = 280f
         fun links(text: String, font: PdfFont = PdfFont.REGULAR, abstand: Float = LINE_HEIGHT) {
-            deckblatt += DrawCommand.Text(text, MARGIN, y, font)
+            deckblatt += DrawCommand.Text(glaetten(text), MARGIN, y, font)
             y += abstand
         }
         links("Honorarabrechnung", PdfFont.TITLE, BLOCK_GAP)
@@ -110,9 +110,14 @@ object InvoiceLayout {
         val positionen = invoice.entries.sortedBy { parseDatum(it.date) ?: LocalDate.MIN }
         val erste = positionen.firstOrNull()
         if (erste != null) {
-            val monat = parseDatum(erste.date)?.let { YearMonth.from(it) } ?: YearMonth.from(today)
-            val von = monat.atDay(1).format(dateFormatter)
-            val bis = monat.atEndOfMonth().format(dateFormatter)
+            // Vom ersten Tag des Monats der ersten bis zum letzten Tag des Monats der letzten
+            // Position. Innerhalb eines Monats ist das derselbe Monat wie früher.
+            fun monatVon(datum: String) =
+                parseDatum(datum)?.let { YearMonth.from(it) } ?: YearMonth.from(today)
+            val ersterMonat = monatVon(erste.date)
+            val letzterMonat = maxOf(ersterMonat, monatVon(positionen.last().date))
+            val von = ersterMonat.atDay(1).format(dateFormatter)
+            val bis = letzterMonat.atEndOfMonth().format(dateFormatter)
 
             y = umbrechen(
                 deckblatt,
@@ -123,7 +128,8 @@ object InvoiceLayout {
             )
             y += 20f
 
-            val saetze = invoice.entries.map { it.rate }.distinct()
+            // 23 und 23.00 sind derselbe Satz; BigDecimal.equals sieht das anders.
+            val saetze = invoice.entries.map { it.rate }.distinctBy { it.stripTrailingZeros() }
             // Auch die UE-Zahl im deutschen Format. Die Android-Vorlage hat hier das
             // BigDecimal direkt eingesetzt und damit einen englischen Punkt gedruckt.
             val ueGesamt = zahl.format(invoice.totalLessonUnit)
@@ -149,7 +155,7 @@ object InvoiceLayout {
             y += 60f
             deckblatt += DrawCommand.Line(MARGIN, y, MARGIN + 200f, y)
             y += LINE_HEIGHT
-            deckblatt += DrawCommand.Text("${company.billerCityName}, $heute", MARGIN, y)
+            deckblatt += DrawCommand.Text(glaetten("${company.billerCityName}, $heute"), MARGIN, y)
         }
 
         // --- Tabellenseiten ---------------------------------------------------------
@@ -190,11 +196,11 @@ object InvoiceLayout {
                     )
                 }
 
-                befehle += DrawCommand.Text(position.date, MARGIN, ty)
+                befehle += DrawCommand.Text(glaetten(position.date), MARGIN, ty)
                 befehle += DrawCommand.Text(zahl.format(ue), MARGIN + COL_UNITS, ty)
                 befehle += DrawCommand.Text("${zahl.format(betrag)} €", MARGIN + COL_COST, ty)
                 befehle += DrawCommand.Text(
-                    text = position.teachingSubject,
+                    text = glaetten(position.teachingSubject),
                     x = MARGIN + COL_SUBJECT,
                     y = ty,
                     clipWidth = PAGE_WIDTH - MARGIN - (MARGIN + COL_SUBJECT),
@@ -237,6 +243,14 @@ object InvoiceLayout {
             fileName = "Rechnung_$formattedInvoiceNumber.pdf",
         )
     }
+
+    /**
+     * Steuerzeichen und jede Folge von Leerraum werden ein Leerzeichen, außen getrimmt.
+     * Ein gespeicherter Zeilenumbruch im Namen ließ PDFBox sonst mit „No glyph for U+000A“
+     * scheitern. Wirkt auch auf Daten, die vor der Korrektur gespeichert wurden.
+     */
+    internal fun glaetten(text: String): String =
+        text.replace(Regex("[\\s\\p{Cc}]+"), " ").trim()
 
     private fun parseDatum(text: String): LocalDate? =
         runCatching { LocalDate.parse(text.trim(), dateFormatter) }.getOrNull()

@@ -2,6 +2,7 @@ package de.v404.honorarcraft.shared.pdf
 
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.InvoiceWithEntries
+import java.io.File
 import java.io.OutputStream
 import java.time.LocalDate
 
@@ -28,6 +29,10 @@ suspend fun createInvoicePdf(
         formattedInvoiceNumber = formattedInvoiceNumber,
         measurer = pdfTextMeasurer(),
         today = today,
+        // Nach dem Einlesen einer Sicherung von einem anderen Gerät zeigt der Pfad ins Leere.
+        // Dann gilt die Unterschrift als nicht vorhanden: das Datum steht oben, unten keine
+        // leere Linie.
+        signaturePath = company.signaturePath.takeIf { it.isNotBlank() && File(it).isFile },
     )
     writeInvoicePdf(model, out)
     return model

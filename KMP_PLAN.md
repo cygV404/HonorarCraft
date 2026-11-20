@@ -556,6 +556,10 @@ Betrag mit dem vollen Wert gerechnet wird. Wer die Rechnung von Hand nachrechnet
 „2,67 × 23" auf 61,41 € statt der gedruckten 61,33 €. Mehr Nachkommastellen wurden abgelehnt;
 die Summe ist richtig, nur die Zwischenzeile lädt zum Nachrechnen mit gerundeten Werten ein.
 
+**Nachtrag 2.1.1 (Entscheidung 3 im `FEHLER_PLAN.md`):** Der Zeitraum auf dem Deckblatt reicht
+jetzt vom ersten Tag des Monats der ersten bis zum letzten Tag des Monats der letzten
+Position. Bei Rechnungen innerhalb eines Monats ändert sich nichts.
+
 ~~Ursprüngliche Frage 6:~~ Honorarsatz pro Position und die Rechnungsnummern-Formate aus der
 Android-App auch auf dem Desktop — heißt: das Desktop-PDF ändert sich. Einverstanden?
 ~~7.~~ — beantwortet: keine Feldverschlüsselung, siehe "Getroffene Entscheidungen" oben.

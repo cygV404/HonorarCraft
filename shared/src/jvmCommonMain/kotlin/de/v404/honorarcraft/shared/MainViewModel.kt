@@ -49,7 +49,7 @@ private const val TAG = "MainViewModel"
  * Application-Objekt zu ziehen — nur so ist das ViewModel plattformunabhängig und im Test
  * ohne Emulator benutzbar. Alles, was eine echte Plattform braucht (PDF-Erzeugung, Backup
  * über Datei-Dialoge), bleibt bewusst draußen; die Oberfläche ruft danach
- * [incrementInvoiceNumber] bzw. die plattformeigene Backup-Schicht auf.
+ * [nachPdfWeiterschalten] bzw. die plattformeigene Backup-Schicht auf.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(
@@ -130,13 +130,22 @@ class MainViewModel(
     )
     val invoiceFormat: StateFlow<InvoiceFormat> = _invoiceFormat.asStateFlow()
 
+    /**
+     * Eine über das Rechnungsmenü geöffnete Nummer, die sich im aktuellen Format nicht
+     * darstellen lässt (etwa „03“, nachdem auf „Jahr-Nr.“ umgestellt wurde). Sie gilt dann
+     * wörtlich, bis die Nummer auf anderem Weg gewählt wird. Bewusst nicht in [settings]:
+     * nach einem Neustart steht wieder die laufende Nummer da.
+     */
+    private val _geoeffneteRechnung = MutableStateFlow<String?>(null)
+
     val formattedInvoiceNumber: StateFlow<String> = combine(
         _selectedInvoiceNumber,
         _invoiceFormat,
         _invoiceYear,
-        _invoiceMonth
-    ) { number, format, year, month ->
-        formatInvoice(number, format, year, month)
+        _invoiceMonth,
+        _geoeffneteRechnung,
+    ) { number, format, year, month, geoeffnet ->
+        geoeffnet ?: formatInvoice(number, format, year, month)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -306,8 +315,17 @@ class MainViewModel(
 
     /** Legt einen Kunden an (`id = 0`) oder ändert ihn. Ein neuer Kunde wird gleich gewählt. */
     fun saveCustomer(customer: Customer) {
+        val getrimmt = customer.copy(
+            nameOrOrga = customer.nameOrOrga.trim(),
+            firstName = customer.firstName.trim(),
+            street = customer.street.trim(),
+            streetNumber = customer.streetNumber.trim(),
+            plz = customer.plz.trim(),
+            mailBox = customer.mailBox.trim(),
+            cityName = customer.cityName.trim(),
+        )
         viewModelScope.launch {
-            val id = customerDao.upsertCustomer(customer)
+            val id = customerDao.upsertCustomer(getrimmt)
             if (customer.id == 0L && id > 0) merkeKunde(id)
         }
     }
@@ -403,55 +421,80 @@ class MainViewModel(
     }
 
     fun setInvoiceYear(year: Int) {
+        _geoeffneteRechnung.value = null
         _invoiceYear.value = year
         settings.putInt(SettingsKeys.INVOICE_YEAR, year)
     }
 
     fun setInvoiceMonth(month: Int) {
+        _geoeffneteRechnung.value = null
         _invoiceMonth.value = month
         settings.putInt(SettingsKeys.INVOICE_MONTH, month)
     }
 
+    /**
+     * Wählt die laufende Nummer — aus der Übersicht (Plus, Minus, Dialog) oder beim Import.
+     * Eine zusammengesetzte Nummer wie „2026-01-03“ setzt Jahr und Monat mit (nur im
+     * Speicher, siehe Fehler 9 im FEHLER_PLAN.md). Rechnungen aus dem Menü öffnet
+     * [openInvoice].
+     */
     fun setSelectedInvoiceNumber(number: String) {
-        // Check if it's a composite number like "2026-01-01" or "2026-01"
-        val parts = number.split("-")
-        if (parts.size >= 2) {
-            val yearPart = parts[0].toIntOrNull()
-            val monthOrNumPart = parts[1].toIntOrNull()
-            
-            if (yearPart != null) _invoiceYear.value = yearPart
-            
-            if (parts.size == 3) {
-                // Format: YEAR-MONTH-NUMBER
-                if (monthOrNumPart != null) _invoiceMonth.value = monthOrNumPart
-                val numPart = parts[2].toIntOrNull()
-                val formattedNum = if (numPart != null) String.format(Locale.GERMANY, "%02d", numPart) else parts[2]
-                _selectedInvoiceNumber.value = formattedNum
-            } else if (parts.size == 2 && invoiceFormat.value == InvoiceFormat.YEAR_NUMBER) {
-                // Format: YEAR-NUMBER
-                val numPart = parts[1].toIntOrNull()
-                val formattedNum = if (numPart != null) String.format(Locale.GERMANY, "%02d", numPart) else parts[1]
-                _selectedInvoiceNumber.value = formattedNum
-            } else {
-                // Fallback for simple number or unknown format
-                val numInt = number.toIntOrNull()
-                val formatted = if (numInt != null) String.format(Locale.GERMANY, "%02d", numInt) else number
-                _selectedInvoiceNumber.value = formatted
-            }
-        } else {
-            val numInt = number.toIntOrNull()
-            val formatted = if (numInt != null) String.format(Locale.GERMANY, "%02d", numInt) else number
-            _selectedInvoiceNumber.value = formatted
-        }
-        
+        val (nummer, jahr, monat) = zerlegeNummer(number, _invoiceFormat.value)
+        jahr?.let { _invoiceYear.value = it }
+        monat?.let { _invoiceMonth.value = it }
+        _selectedInvoiceNumber.value = nummer
+        _geoeffneteRechnung.value = null
+
         settings.putString(SettingsKeys.SELECTED_INVOICE_NUMBER, _selectedInvoiceNumber.value)
-        
+
         // Reset confirmation card to avoid "ghost" entries from previous invoice
         _lastAddedEntry.value = null
         _showEntryConfirmation.value = false
     }
 
+    /**
+     * Öffnet eine bestehende Rechnung über ihre fertige Nummer aus der Datenbank.
+     *
+     * Lässt sich die Nummer im aktuellen Format verlustfrei zerlegen, wird sie wie bisher die
+     * laufende Nummer. Sonst — sie stammt aus einem anderen Format — gilt sie wörtlich, statt
+     * im aktuellen Format neu zusammengesetzt auf eine fremde oder leere Rechnung zu zeigen.
+     */
+    fun openInvoice(exactNumber: String) {
+        val format = _invoiceFormat.value
+        val (nummer, jahr, monat) = zerlegeNummer(exactNumber, format)
+        val passt = formatInvoice(
+            nummer, format, jahr ?: _invoiceYear.value, monat ?: _invoiceMonth.value
+        ) == exactNumber
+        if (passt) {
+            setSelectedInvoiceNumber(exactNumber)
+        } else {
+            _geoeffneteRechnung.value = exactNumber
+            _lastAddedEntry.value = null
+            _showEntryConfirmation.value = false
+        }
+    }
+
+    /** Laufende Nummer, Jahr und Monat aus einer eingegebenen oder gespeicherten Nummer. */
+    private fun zerlegeNummer(number: String, format: InvoiceFormat): Triple<String, Int?, Int?> {
+        fun zweistellig(teil: String) =
+            teil.toIntOrNull()?.let { String.format(Locale.GERMANY, "%02d", it) } ?: teil
+
+        val parts = number.split("-")
+        return when {
+            // Format: YEAR-MONTH-NUMBER
+            parts.size == 3 ->
+                Triple(zweistellig(parts[2]), parts[0].toIntOrNull(), parts[1].toIntOrNull())
+            // Format: YEAR-NUMBER
+            parts.size == 2 && format == InvoiceFormat.YEAR_NUMBER ->
+                Triple(zweistellig(parts[1]), parts[0].toIntOrNull(), null)
+            // Einfache Nummer oder Unbekanntes; das Jahr übernahm die alte Fassung trotzdem.
+            parts.size >= 2 -> Triple(zweistellig(number), parts[0].toIntOrNull(), null)
+            else -> Triple(zweistellig(number), null, null)
+        }
+    }
+
     fun setInvoiceFormat(format: InvoiceFormat) {
+        _geoeffneteRechnung.value = null
         _invoiceFormat.value = format
         settings.putString(SettingsKeys.INVOICE_FORMAT, format.name)
     }
@@ -461,6 +504,24 @@ class MainViewModel(
         setSelectedInvoiceNumber((current + 1).toString())
     }
 
+    /**
+     * Nach einem erfolgreich geschriebenen PDF. Wer eine alte Rechnung erneut druckt, soll
+     * nicht auf einer bestehenden Nummer landen und dort weitere Stunden anhängen:
+     * - Eine wörtlich geöffnete Rechnung wird nur geschlossen, es wird nicht gezählt.
+     * - Sonst wird nur weitergeschaltet, wenn es die nächste Nummer noch nicht gibt.
+     */
+    suspend fun nachPdfWeiterschalten() {
+        if (_geoeffneteRechnung.value != null) {
+            _geoeffneteRechnung.value = null
+            return
+        }
+        val naechste = ((_selectedInvoiceNumber.value.toIntOrNull() ?: 0) + 1).toString()
+        val formatiert = formatInvoice(
+            naechste, _invoiceFormat.value, _invoiceYear.value, _invoiceMonth.value
+        )
+        if (invoiceDao.getInvoice(formatiert) == null) setSelectedInvoiceNumber(naechste)
+    }
+
     fun updateInvoiceForm(date: String? = null, hours: String? = null, subject: String? = null) {
         date?.let { _currentDate.value = it }
         hours?.let { _currentHours.value = it }
@@ -468,9 +529,21 @@ class MainViewModel(
     }
 
     fun saveCompanyData(data: CompanyData) {
+        // Pfade (Unterschrift, Ablageordner) bleiben, wie sie sind.
+        val getrimmt = data.copy(
+            billerSecondName = data.billerSecondName.trim(),
+            billerFirstName = data.billerFirstName.trim(),
+            billerStreetName = data.billerStreetName.trim(),
+            billerStreetNumber = data.billerStreetNumber.trim(),
+            billerPlzNumber = data.billerPlzNumber.trim(),
+            billerCityName = data.billerCityName.trim(),
+            taxNumber = data.taxNumber.trim(),
+            billerIban = data.billerIban.trim(),
+            billerBIC = data.billerBIC.trim(),
+        )
         viewModelScope.launch {
             _isLoading.value = true
-            companyDao.insertCompanyData(data)
+            companyDao.insertCompanyData(getrimmt)
             _isLoading.value = false
             _hasUnsavedChanges.value = false
         }
@@ -499,6 +572,9 @@ class MainViewModel(
         val klasseFach = _currentSubject.value.trim()
 
         if (datum.isBlank() || stunden.isBlank()) return
+        // Ein Doppeltipp auf „Hinzufügen“ legte den Eintrag zweimal an: das Formular wird
+        // erst nach dem Schreiben geleert.
+        if (eintragLaeuft) return
 
         val number = formattedInvoiceNumber.value
         val hours = stunden.replace(",", ".").toBigDecimalOrNull()
@@ -514,49 +590,56 @@ class MainViewModel(
             return
         }
 
+        eintragLaeuft = true
         viewModelScope.launch {
-            val existingInvoice = invoiceDao.getInvoice(number)
-            val cd = companyDao.getCompanyData().first()
-            val rate = kunde.rate ?: cd?.rate ?: Constants.DEFAULT_RATE
+            try {
+                val existingInvoice = invoiceDao.getInvoice(number)
+                val cd = companyDao.getCompanyData().first()
+                val rate = kunde.rate ?: cd?.rate ?: Constants.DEFAULT_RATE
 
-            if (existingInvoice == null) {
-                val details = _detailsDraft.value
-                invoiceDao.insertInvoice(
-                    InvoiceData(
-                        invoiceNumber = number,
-                        customerId = kunde.id,
-                        eduCenter = details.eduCenter,
-                        locationNr = details.locationNr,
-                        schoolType = details.schoolType,
+                if (existingInvoice == null) {
+                    val details = _detailsDraft.value
+                    invoiceDao.insertInvoice(
+                        InvoiceData(
+                            invoiceNumber = number,
+                            customerId = kunde.id,
+                            eduCenter = details.eduCenter,
+                            locationNr = details.locationNr,
+                            schoolType = details.schoolType,
+                        )
                     )
+                }
+
+                val entry = InvoiceEntry(
+                    invoiceNumber = number,
+                    date = datum,
+                    lessonUnits = hours,
+                    teachingSubject = klasseFach,
+                    rate = rate
                 )
-            }
+                invoiceDao.insertEntry(entry)
+                // Wer ein Fach wieder bucht, will es auch wieder vorgeschlagen bekommen.
+                if (klasseFach.isNotBlank()) invoiceDao.unhideSubject(klasseFach)
 
-            val entry = InvoiceEntry(
-                invoiceNumber = number,
-                date = datum,
-                lessonUnits = hours,
-                teachingSubject = klasseFach,
-                rate = rate
-            )
-            invoiceDao.insertEntry(entry)
-            // Wer ein Fach wieder bucht, will es auch wieder vorgeschlagen bekommen.
-            if (klasseFach.isNotBlank()) invoiceDao.unhideSubject(klasseFach)
+                confirmationJob?.cancel()
+                _lastAddedEntry.value = entry
+                _showEntryConfirmation.value = true
 
-            confirmationJob?.cancel()
-            _lastAddedEntry.value = entry
-            _showEntryConfirmation.value = true
+                _currentHours.value = ""
+                _currentSubject.value = ""
+                _currentDate.value = getCurrentDateFormatted()
 
-            _currentHours.value = ""
-            _currentSubject.value = ""
-            _currentDate.value = getCurrentDateFormatted()
-
-            confirmationJob = launch {
-                delay(4500)  // Delay für 4.5 Sekunden
-                _showEntryConfirmation.value = false
+                confirmationJob = launch {
+                    delay(4500)  // Delay für 4.5 Sekunden
+                    _showEntryConfirmation.value = false
+                }
+            } finally {
+                eintragLaeuft = false
             }
         }
     }
+
+    private var eintragLaeuft = false
 
     fun deleteEntries(entries: List<InvoiceEntry>) {
         viewModelScope.launch {
@@ -567,9 +650,9 @@ class MainViewModel(
     fun deleteInvoice(invoiceNumber: String) {
         viewModelScope.launch {
             invoiceDao.deleteInvoice(invoiceNumber)
-            if (_selectedInvoiceNumber.value == invoiceNumber) {
-                setSelectedInvoiceNumber("1")
-            }
+            // Die Nummer bleibt stehen (die Rechnung ist dann einfach wieder leer); nur eine
+            // wörtlich geöffnete Nummer wird geschlossen.
+            if (_geoeffneteRechnung.value == invoiceNumber) _geoeffneteRechnung.value = null
         }
     }
 
@@ -588,6 +671,7 @@ class MainViewModel(
                 _invoiceYear.value = now.get(Calendar.YEAR)
                 _invoiceMonth.value = now.get(Calendar.MONTH) + 1
                 _selectedInvoiceNumber.value = "1"
+                _geoeffneteRechnung.value = null
                 _invoiceFormat.value = InvoiceFormat.NUMBER
                 _themeMode.value = ThemeMode.SYSTEM
                 _selectedCustomerId.value = null

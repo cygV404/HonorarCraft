@@ -66,6 +66,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.math.RoundingMode
 import de.v404.honorarcraft.shared.MainViewModel
 import de.v404.honorarcraft.shared.data.CompanyData
 import de.v404.honorarcraft.shared.data.Customer
@@ -92,6 +93,27 @@ fun DataWindowScreen(
     val themeMode by mainViewModel.themeMode.collectAsState()
     val kunden by mainViewModel.customers.collectAsState()
 
+    // Desktop: „Neustart“ heißt Beenden. Die Meldung muss stehen bleiben, bis der Nutzer sie
+    // bestätigt — eine Snackbar wäre mit dem Prozess verschwunden, bevor sie zu sehen ist.
+    var beendenMeldung by remember { mutableStateOf<String?>(null) }
+    beendenMeldung?.let { meldung ->
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("HonorarCraft wird beendet") },
+            text = { Text(meldung) },
+            confirmButton = { TextButton(onClick = { platform.restartApp() }) { Text("OK") } },
+        )
+    }
+
+    fun neuStarten(meldung: String) {
+        if (platform.neustartIstBeenden) {
+            beendenMeldung = "$meldung HonorarCraft wird jetzt beendet."
+        } else {
+            mainViewModel.showMessage("$meldung Die App startet neu.")
+            platform.restartApp()
+        }
+    }
+
     DataWindowContent(
         savedData = savedData,
         kunden = kunden,
@@ -107,8 +129,13 @@ fun DataWindowScreen(
         onExport = {
             scope.launch {
                 mainViewModel.setLoading(true)
-                val ergebnis = platform.exportBackup()
-                mainViewModel.setLoading(false)
+                // finally: Wird die Coroutine abgebrochen (Android baut die Activity bei
+                // offenem Dateidialog neu auf), bliebe der Bereich sonst dauerhaft gesperrt.
+                val ergebnis = try {
+                    platform.exportBackup()
+                } finally {
+                    mainViewModel.setLoading(false)
+                }
                 when {
                     // null heisst: der Nutzer hat den Dateidialog abgebrochen.
                     ergebnis == null -> Unit
@@ -122,20 +149,23 @@ fun DataWindowScreen(
         onImport = {
             scope.launch {
                 mainViewModel.setLoading(true)
-                val ergebnis = platform.importBackup()
-                mainViewModel.setLoading(false)
+                val ergebnis = try {
+                    platform.importBackup()
+                } finally {
+                    mainViewModel.setLoading(false)
+                }
                 when {
                     ergebnis == null -> Unit
-                    ergebnis.isSuccess -> {
-                        mainViewModel.showMessage("Sicherung eingelesen – die App startet neu")
-                        platform.restartApp()
-                    }
+                    ergebnis.isSuccess -> neuStarten("Sicherung eingelesen.")
                     else -> {
                         val fehler = ergebnis.exceptionOrNull()
-                        mainViewModel.showMessage(fehler?.message ?: "Import fehlgeschlagen")
                         // Scheiterte der Tausch erst nach dem Schliessen der Verbindung, sind
                         // die Daten zwar heil, die laufende App aber nicht mehr benutzbar.
-                        if (fehler is NeustartNoetigException) platform.restartApp()
+                        if (fehler is NeustartNoetigException) {
+                            neuStarten(fehler.message ?: "Import fehlgeschlagen.")
+                        } else {
+                            mainViewModel.showMessage(fehler?.message ?: "Import fehlgeschlagen")
+                        }
                     }
                 }
             }
@@ -148,7 +178,9 @@ fun DataWindowScreen(
         beschreibePdfOrdner = { platform.describePdfFolder(it) },
         onPickSignature = { uebernehmen ->
             scope.launch {
-                val pfad = platform.pickSignatureImage()
+                // Die gespeicherte Unterschrift, nicht der Entwurf: sie muss für „Verwerfen“
+                // liegen bleiben.
+                val pfad = platform.pickSignatureImage(savedData?.signaturePath.orEmpty())
                 if (pfad == null) {
                     // Abbruch im Dialog ist kein Fehler; ein Fehler beim Kopieren schon.
                     return@launch
@@ -156,6 +188,8 @@ fun DataWindowScreen(
                 uebernehmen(pfad)
             }
         },
+        neustartIstBeenden = platform.neustartIstBeenden,
+        onMessage = { mainViewModel.showMessage(it) },
         selectedTabIndex = selectedTabIndex,
         onTabSelected = onTabSelected
     )
@@ -205,7 +239,10 @@ fun DataWindowContent(
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
     selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit
+    onTabSelected: (Int) -> Unit,
+    /** Desktop: nach dem Einlesen wird beendet statt neu gestartet. */
+    neustartIstBeenden: Boolean = false,
+    onMessage: (String) -> Unit = {},
 ) {
     // Initialisierung des lokalen Zustands mit den Daten aus der Datenbank.
     // Durch remember(savedData, resetTrigger) greift remember hier jedes Mal neu,
@@ -217,6 +254,10 @@ fun DataWindowContent(
     var rateText by remember(savedData, resetTrigger) {
         mutableStateOf(companyDataState.rate.toString().replace(".", ","))
     }
+
+    // Nur ein Betrag über null gilt. Früher wurde nur Parsbares übernommen: wer „23,00“
+    // löschte, speicherte stillschweigend 2.
+    val satz = rateText.trim().replace(",", ".").toBigDecimalOrNull()?.takeIf { it.signum() > 0 }
 
     var showMenu by remember { mutableStateOf(false) }
     var kundeInBearbeitung by remember { mutableStateOf<Customer?>(null) }
@@ -248,7 +289,11 @@ fun DataWindowContent(
                 Text(
                     "Alle aktuellen Rechnungen, Positionen und Firmendaten werden durch " +
                         "die Sicherung ersetzt. Das lässt sich nicht rückgängig machen.\n\n" +
-                        "Die App startet danach neu."
+                        if (neustartIstBeenden) {
+                            "HonorarCraft wird danach beendet und muss neu geöffnet werden."
+                        } else {
+                            "Die App startet danach neu."
+                        }
                 )
             },
             confirmButton = {
@@ -680,18 +725,25 @@ fun DataWindowContent(
                     DataField(
                         label = "Honorarsatz € a 45 Minuten",
                         value = rateText,
+                        isError = satz == null,
+                        supportingText = if (satz == null) "Bitte einen Betrag wie 25,00 eingeben." else null,
                         onValueChange = {
                             rateText = it
-                            it.replace(",", ".").toBigDecimalOrNull()?.let { parsed ->
-                                companyDataState = companyDataState.copy(rate = parsed)
-                            }
                             onChanged()
                         })
                 }
             }
 
             FloatingActionButton(
-                onClick = { if (!isLoading) onSave(companyDataState) },
+                onClick = {
+                    when {
+                        isLoading -> Unit
+                        satz == null -> onMessage("Bitte beim Honorarsatz einen Betrag wie 25,00 eingeben.")
+                        else -> onSave(
+                            companyDataState.copy(rate = satz.setScale(2, RoundingMode.HALF_UP))
+                        )
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp),
@@ -732,12 +784,26 @@ fun SectionHeader(text: String) {
     )
 }
 
+/**
+ * Einzeiliges Eingabefeld. Ein Zeilenumbruch im Namen landete früher in der Datenbank und
+ * ließ das Desktop-PDF scheitern; eingefügte Umbrüche und Tabulatoren werden deshalb zu
+ * Leerzeichen.
+ */
 @Composable
-fun DataField(label: String, value: String, onValueChange: (String) -> Unit) {
+fun DataField(
+    label: String,
+    value: String,
+    isError: Boolean = false,
+    supportingText: String? = null,
+    onValueChange: (String) -> Unit,
+) {
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { onValueChange(it.replace(Regex("[\\r\\n\\t]"), " ")) },
         label = { Text(label) },
+        singleLine = true,
+        isError = isError,
+        supportingText = supportingText?.let { { Text(it) } },
         modifier = Modifier.fillMaxWidth()
     )
 }

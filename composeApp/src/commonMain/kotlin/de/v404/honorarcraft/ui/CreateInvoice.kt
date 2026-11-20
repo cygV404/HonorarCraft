@@ -134,7 +134,7 @@ fun CreateInvoiceScreen(
         uniqueSubjects = uniqueSubjects,
         onUpdateForm = { d, s, kf -> mainViewModel.updateInvoiceForm(d, s, kf) },
         onAddEntry = { mainViewModel.addEntryFromForm() },
-        onInvoiceSelect = { mainViewModel.setSelectedInvoiceNumber(it) },
+        onInvoiceSelect = { mainViewModel.openInvoice(it) },
         onHideSubjectSuggestion = { mainViewModel.hideSubjectSuggestion(it) },
         onDeleteInvoice = { mainViewModel.deleteInvoice(it) },
         selectedTabIndex = selectedTabIndex,

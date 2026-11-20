@@ -1,4 +1,4 @@
-# HonorarCraft v2.1
+# HonorarCraft v2.1.1
 
 Ein modernes Tool zur Honorarabrechnung und Rechnungsverwaltung für **Desktop und Android**,
 entwickelt mit **Compose Multiplatform** und **Kotlin**. Beide Plattformen teilen sich
@@ -24,7 +24,8 @@ Handy und Rechner austauschen.
 * **Sicherung und Umzug:** Der komplette Datenbestand lässt sich in eine Datei schreiben und
   wieder einlesen – **auch plattformübergreifend.** Eine Sicherung vom Handy öffnet sich auf
   dem Rechner und umgekehrt; ältere Sicherungen werden dabei automatisch auf den aktuellen
-  Stand gehoben.
+  Stand gehoben. Vor jedem Einlesen bleibt der bisherige Stand als Kopie neben der Datenbank
+  liegen (`honorarcraft_database.vor-import`, beim nächsten Einlesen überschrieben).
 * **Heller und dunkler Modus,** wahlweise der Systemeinstellung folgend.
 * **Lokale Datenhaltung:** Alle Daten bleiben auf dem Gerät. Es gibt keine Netzwerk-
   berechtigung und keinen Server.

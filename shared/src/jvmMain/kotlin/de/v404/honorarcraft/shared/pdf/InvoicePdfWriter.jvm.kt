@@ -50,7 +50,7 @@ actual fun pdfTextMeasurer(): TextMeasurer {
     val (regular, bold) = Fonts.load(doc)
     return TextMeasurer { text, font ->
         val f = if (font == PdfFont.REGULAR) regular else bold
-        runCatching { f.getStringWidth(text) / 1000f * groesse(font) }.getOrDefault(0f)
+        runCatching { f.getStringWidth(kodierbar(text, f)) / 1000f * groesse(font) }.getOrDefault(0f)
     }
 }
 
@@ -71,8 +71,9 @@ actual suspend fun writeInvoicePdf(model: PdfDocumentModel, out: OutputStream) =
                         is DrawCommand.Text -> {
                             val f = schrift(befehl.font)
                             val size = groesse(befehl.font)
+                            val roh = kodierbar(befehl.text, f)
                             val breite = runCatching {
-                                f.getStringWidth(befehl.text) / 1000f * size
+                                f.getStringWidth(roh) / 1000f * size
                             }.getOrDefault(0f)
                             val x = when (befehl.align) {
                                 PdfAlign.LEFT -> befehl.x
@@ -83,8 +84,8 @@ actual suspend fun writeInvoicePdf(model: PdfDocumentModel, out: OutputStream) =
                             // aber ein abgeschnittener Buchstabe liest sich schlechter als
                             // ein sichtbar gekürzter Text.
                             val text = befehl.clipWidth?.let { max ->
-                                kuerzen(befehl.text, f, size, max)
-                            } ?: befehl.text
+                                kuerzen(roh, f, size, max)
+                            } ?: roh
 
                             c.beginText()
                             c.setFont(f, size)
@@ -140,6 +141,32 @@ actual suspend fun writeInvoicePdf(model: PdfDocumentModel, out: OutputStream) =
             out.use { doc.save(it) }
         }
     }
+
+/** Damit nicht jedes fehlende Zeichen einzeln im Protokoll landet. */
+@Volatile
+private var ersatzGemeldet = false
+
+/**
+ * Ersetzt jedes Zeichen, das [font] nicht kodieren kann, durch „?“. PDFBox wirft sonst in
+ * `showText` („No glyph for U+…“) und das ganze PDF scheitert — bei Emojis, fremden Schriften
+ * oder Steuerzeichen. Messen, Kürzen und Zeichnen benutzen dieselbe Fassung des Textes.
+ */
+private fun kodierbar(text: String, font: PDFont): String {
+    if (runCatching { font.encode(text) }.isSuccess) return text
+    val ergebnis = StringBuilder()
+    var i = 0
+    while (i < text.length) {
+        val cp = text.codePointAt(i)
+        val zeichen = String(Character.toChars(cp))
+        ergebnis.append(if (runCatching { font.encode(zeichen) }.isSuccess) zeichen else "?")
+        i += Character.charCount(cp)
+    }
+    if (!ersatzGemeldet) {
+        ersatzGemeldet = true
+        logError("InvoicePdf", "Zeichen ohne Glyphe durch „?“ ersetzt: $text", null)
+    }
+    return ergebnis.toString()
+}
 
 /** Kürzt [text] mit Auslassungspunkten, bis er in [maxWidth] passt. */
 private fun kuerzen(text: String, font: PDFont, size: Float, maxWidth: Float): String {

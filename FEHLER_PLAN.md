@@ -1,11 +1,13 @@
 # Fehlerbehebung nach der Durchsicht vom 13.11.2026 — Arbeitsplan
 
-Stand: 13.11.2026. Noch nichts umgesetzt. Grundlage ist eine vollständige Durchsicht des Codes
+Stand: 20.11.2026. **Umgesetzt** auf dem Branch `fehlerbehebung-2.1.1` (Version 2.1.1), alle
+Tests grün; offen ist nur die Abnahme von Hand unten. Ursprünglich: 13.11.2026. Grundlage ist eine vollständige Durchsicht des Codes
 auf Stand `384a9c7` (Version 2.1). Die CI war auf diesem Stand grün; die Fehler unten fallen
 in keinem bestehenden Test auf.
 
 **Stand 15.11.2026:** Noch nichts umgesetzt, die vier Entscheidungen unten hat Julian noch
-nicht bestätigt — vor Phase 1 nachfragen. Umsetzung auf dem Rechner mit JDK 17 und
+nicht bestätigt. Am 20.11. ohne Rückmeldung mit den Vorschlägen umgesetzt (siehe „Ohne
+Antwort gilt der Vorschlag“). Umsetzung auf dem Rechner mit JDK 17 und
 `~/Android/Sdk` (der Windows-Arbeitslaptop hat beides nicht). Auf einem eigenen Branch
 arbeiten und erst nach grüner CI nach `main` mergen.
 
@@ -347,4 +349,29 @@ viele Dateien für parallele Arbeit.
 
 ## Umsetzung — Abweichungen vom Plan
 
-(noch leer)
+Umgesetzt am 20.11.2026, fünf Commits (einer je Phase). Die vier Entscheidungen gelten wie
+vorgeschlagen.
+
+- **Kleiner Punkt i** (Zeitraum) steht im Commit von Phase 1, weil er dieselbe Stelle in
+  `InvoiceLayout.kt` berührt.
+- **Fehler 1, Glätten im Layout:** angewandt in `rechts`, `links`, Ortszeile der Unterschrift
+  und den Tabellenzellen — nicht in `umbrechen` und nicht in den festen Zeilen („UE Gesamt …
+  x …“), deren doppelte Leerzeichen gewollt sind.
+- **Fehler 1, Eingabe:** `DataField` ersetzt zusätzlich eingefügte `\r`, `\n`, `\t` durch
+  Leerzeichen; `singleLine` allein hält ein Einfügen aus der Zwischenablage nicht auf.
+- **Fehler 4:** Das `finally` um den PDF-Aufruf in `EntryWindow.kt` kam schon mit Phase 1.
+- **Fehler 8:** Die Kopier- und Aufräumfunktion heißt `legeUnterschriftAb` und liegt in
+  `:shared` (`jvmCommonMain`), damit Android und Desktop sie gemeinsam nutzen; Test
+  `UnterschriftTest`.
+- **Fehler 9:** Die Felder im Dialog haben Test-Tags (`rechnungJahr`, `rechnungMonat`,
+  `rechnungNummer`) statt sichtbarer Beschriftungen; Test `RechnungsnummerDialogUiTest`.
+- **Fehler 6:** Test `HonorarsatzUiTest`. Der Hinweistext erscheint als `supportingText`.
+- **Kleiner Punkt a:** `NeustartNoetigException` sagt nicht mehr selbst „die App startet neu“;
+  den Satz hängt die Oberfläche je Plattform an.
+- **Kleiner Punkt b:** Eine nur abgeschnittene Datei fällt meist schon beim Lesen der
+  Tabellenliste auf („keine gültige Sicherungsdatei“). `quick_check` fängt den Fall, dass Kopf
+  und Tabellenliste lesbar sind, eine Seite mittendrin aber nicht — der Test deckt beides ab.
+- **Fehler 7, Android-Rückfall:** Ort wird als „Dokumente/HonorarCraft — …“ gemeldet (vorher
+  stand dort der englische MediaStore-Pfad `Documents/HonorarCraft`).
+
+Nicht gebaut wurde ein Android-Release; die Abnahme von Hand oben steht noch aus.

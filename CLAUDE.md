@@ -18,12 +18,11 @@ Planungsdokumente im Wurzelverzeichnis:
 - `KMP_PLAN.md` — der abgeschlossene Umbau zu KMP (Version 2.0). Begründungen für Architektur-,
   Datenhaltungs- und Rechenentscheidungen stehen dort; vor Änderungen in diesen Bereichen lesen.
 - `KUNDEN_PLAN.md` — mehrere Kunden (umgesetzt in 2.1); Entscheidungen und Begründungen.
-- `FEHLER_PLAN.md` — **nächstes Vorhaben vor allem anderen:** neun Fehler und neun kleinere
-  Punkte aus der Durchsicht vom 13.11.2026, Ziel 2.1.1 ohne Schemaänderung. Noch nicht
-  begonnen; die vier Entscheidungen darin sind noch nicht bestätigt.
-- `WLAN_PLAN.md` — danach: Sicherung über das lokale Netz übertragen (kein Sync).
+- `FEHLER_PLAN.md` — Fehlerbehebung nach der Durchsicht vom 13.11.2026 (umgesetzt in 2.1.1,
+  ohne Schemaänderung). Abweichungen und offene Handabnahme stehen am Ende.
+- `WLAN_PLAN.md` — nächstes Vorhaben: Sicherung über das lokale Netz übertragen (kein Sync).
 
-Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, Version 2.1,
+Stand: Gradle 9.5.0, Kotlin 2.4.10, Compose Multiplatform 1.12.0, AGP 9.1.1, Version 2.1.1,
 Paket überall `de.v404.honorarcraft`, `minSdk` 29, `targetSdk` 36, `compileSdk` 37.
 
 ## Befehle
@@ -133,8 +132,10 @@ fehlender Migrationspfad soll auffallen, statt Rechnungen zu löschen.
 auf beliebigen Streams; der Import prüft die Datei, sichert den alten Stand, rollt bei Fehlern
 zurück und hebt ältere Stände über die Migrationskette. Nach einem Import muss die App neu
 starten (`PlatformServices.restartApp()`), weil die Room-Flows an der geschlossenen Verbindung
-hängen. Sicherungen sind zwischen Android und Desktop austauschbar — aber nur, wenn beide auf
-derselben Schemaversion sind: eine 2.1-Sicherung lehnt eine 2.0-App ab. Desktop und Android
+hängen. Der Import prüft die Datei mit `PRAGMA quick_check` und lässt den Stand davor als
+`<DATABASE_FILE_NAME>.vor-import` neben der Datenbank liegen (eine Generation, beim nächsten
+Import überschrieben, keine Oberfläche dafür). Sicherungen sind zwischen Android und Desktop
+austauschbar — aber nur, wenn beide auf derselben Schemaversion sind: eine 2.1-Sicherung lehnt eine 2.0-App ab. Desktop und Android
 deshalb immer gemeinsam veröffentlichen.
 
 ### Geldbeträge und die UE/Stunden-Namensfalle
@@ -169,11 +170,19 @@ Rechnungsnummern-Formate (laufend, mit Jahr, mit Jahr und Monat) in `InvoiceNumb
   gewählte aktive), `invoiceDetails` (Angaben der Rechnung bzw. Entwurf vor dem ersten Eintrag,
   vorbelegt von der letzten Rechnung des Kunden) und `dashboardCustomerFilter`. Gewählter
   Kunde und Filter liegen in `Settings`; ein Filter auf eine id, die es nicht (mehr) gibt,
-  gilt als „alle“. Ohne Kunden verweigert `addEntryFromForm()`. Änderungen an einer Rechnung
+  gilt als „alle“. Ohne Kunden verweigert `addEntryFromForm()`, und solange ein Eintrag
+  geschrieben wird, auch ein zweiter Aufruf (Doppeltipp).
+- **Rechnungsnummer:** `setSelectedInvoiceNumber` ist für die Übersicht (Plus, Minus, Dialog)
+  und den Altdaten-Import; die Rechnungsmenüs rufen `openInvoice(exakteNummer)`. Lässt sich
+  die Nummer im aktuellen Format nicht verlustfrei zerlegen (sie stammt aus einem anderen
+  Format), gilt sie wörtlich, bis die Nummer anders gewählt wird — nicht in `Settings`. Nach
+  einem PDF ruft die Oberfläche `nachPdfWeiterschalten()`: schließt eine wörtlich geöffnete
+  Nummer, sonst wird nur weitergeschaltet, wenn die nächste Nummer noch frei ist.
+  Löschen der angezeigten Rechnung lässt die Nummer stehen. Änderungen an einer Rechnung
   laufen über `schreibeRechnung` (ein `Mutex`), damit schnelle Tastendrücke sich nicht
   überholen.
 - PDF-Erzeugung und Sicherung sind bewusst **nicht** im ViewModel; sie laufen über
-  `PlatformServices` und rufen danach `incrementInvoiceNumber()` bzw. `showMessage(...)`.
+  `PlatformServices` und rufen danach `nachPdfWeiterschalten()` bzw. `showMessage(...)`.
 - Um Room-Aufrufe gehört **kein** `withContext(Dispatchers.IO)` — Room legt suspend-Abfragen
   selbst auf seinen Abfrage-Kontext. Tests reichen diesen über
   `createDesktopDatabase(path, queryContext)` herein, sonst laufen die Abfragen an der Testuhr
@@ -199,6 +208,16 @@ Plattformunterschiede laufen über `ui/platform/` mit `expect`/`actual`:
 - `rememberMainViewModel()` — baut das ViewModel; auf dem Desktop startet es außerdem den
   einmaligen Import der Altdaten (siehe unten).
 - `pdfPath` enthält auf dem Desktop einen Dateipfad, auf Android eine `content://`-Adresse.
+  Ein Wert der jeweils anderen Plattform (aus einer Sicherung) gilt als leer; Android fällt
+  außerdem auf `Dokumente/HonorarCraft` zurück, wenn der gewählte Ordner nicht erreichbar ist.
+- `pickSignatureImage(gespeicherterPfad)` — der Aufrufer übergibt die **gespeicherte**
+  Unterschrift, nicht den Entwurf. Jede Kopie bekommt einen eigenen Namen, die gespeicherte
+  bleibt für „Verwerfen“ liegen (`legeUnterschriftAb` im `:shared`-Modul).
+- `neustartIstBeenden` — auf dem Desktop beendet `restartApp()` nur. Die Oberfläche sagt das
+  vor dem Einlesen und zeigt danach einen Dialog, erst dessen „OK“ beendet.
+- Um `setLoading(true)` gehört immer ein `try`/`finally` — sonst bleibt der Bereich „Daten“
+  nach einer abgebrochenen Coroutine gesperrt. Die Android-Activity behält sich bei
+  Drehungen (`configChanges` im Manifest).
 
 ### PDF-Export (`shared/.../pdf/`)
 
@@ -235,7 +254,9 @@ Die alte Desktop-App speicherte JSON-Dateien (`company.json`, `invoices/`, `tota
 und Steuernummer per AES — Schlüssel als `vault_key` in `java.util.prefs` unter
 `app/accounting/honorarcraft`. `LegacyDesktopImport` übernimmt das beim ersten Start einmalig
 in Room (`LegacyVaultCrypto` entschlüsselt dafür, der alte Empfänger wird ein Kunde) und benennt den Altbestand in
-`vor-room-<datum>/` um, statt ihn zu löschen. Manuelle Jahres-Startwerte (Schlüssel `"S"` in
+`vor-room-<datum>/` um, statt ihn zu löschen. Vorher legt er die Markierung
+`altdaten-uebernommen` an; solange sie liegt, gilt ein liegengebliebener Altbestand als
+übernommen. Manuelle Jahres-Startwerte (Schlüssel `"S"` in
 `totals/`) haben kein Gegenstück in Room und werden nur gemeldet. Seit 2.0 gibt es **keine**
 Feldverschlüsselung mehr; den Preferences-Knoten `app/accounting/honorarcraft` nicht leeren,
 solange noch unimportierte Altinstallationen denkbar sind.
