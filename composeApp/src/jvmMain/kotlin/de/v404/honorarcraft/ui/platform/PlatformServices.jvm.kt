@@ -93,8 +93,16 @@ class DesktopPlatformServices : PlatformServices {
         chooser.selectedFile?.absolutePath
     }
 
-    override fun describePdfFolder(pdfPath: String): String =
-        pdfPath.ifBlank { File(System.getProperty("user.home"), "Dokumente/Honorarabrechnungen").absolutePath }
+    override fun describePdfFolder(pdfPath: String): String = pdfOrdner(pdfPath).absolutePath
+
+    /**
+     * Der eingestellte Ordner oder der Vorgabeordner. Eine `content://`-Adresse stammt aus
+     * einer Sicherung vom Handy und gilt hier als leer — unter Linux entstand sonst ein Ordner
+     * `content:/…`, unter Windows scheiterte das PDF.
+     */
+    private fun pdfOrdner(pdfPath: String): File =
+        pdfPath.takeIf { it.isNotBlank() && !it.startsWith("content://") }?.let(::File)
+            ?: File(System.getProperty("user.home"), "Dokumente/Honorarabrechnungen")
 
     /**
      * Schreibt die Rechnung in den eingestellten Ordner. Fehlt die Angabe, landet sie im
@@ -105,8 +113,7 @@ class DesktopPlatformServices : PlatformServices {
         company: CompanyData,
         formattedInvoiceNumber: String,
     ): Result<String> = runCatching {
-        val ordner = company.pdfPath.takeIf { it.isNotBlank() }?.let(::File)
-            ?: File(System.getProperty("user.home"), "Dokumente/Honorarabrechnungen")
+        val ordner = pdfOrdner(company.pdfPath)
         withContext(Dispatchers.IO) {
             ordner.mkdirs()
             val ziel = File(ordner, pdfDateiname(formattedInvoiceNumber, invoice.customer))

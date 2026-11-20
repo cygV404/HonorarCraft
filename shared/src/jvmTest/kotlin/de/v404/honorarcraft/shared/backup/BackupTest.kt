@@ -184,6 +184,79 @@ class BackupTest {
     }
 
     @Test
+    fun `eine beschaedigte oder abgeschnittene Sicherung wird abgewiesen und die Daten bleiben`() = runTest {
+        fuelleDatenbank("07")
+        // Genug Positionen, damit die Datei viele Seiten hat und die Tabellen am Anfang
+        // lesbar bleiben.
+        repeat(400) {
+            db!!.invoiceDao().insertEntry(
+                InvoiceEntry(
+                    invoiceNumber = "07",
+                    date = "02.09.2026",
+                    lessonUnits = BigDecimal("1"),
+                    teachingSubject = "Fach $it " + "x".repeat(200),
+                )
+            )
+        }
+        val sicherung = File(dir, "sicherung.hcbackup")
+        Backup.export(db!!, dbFile, sicherung.outputStream()).getOrThrow()
+        val bytes = sicherung.readBytes()
+
+        // Volle Länge, aber eine Datenseite mittendrin genullt: Kopf und Tabellenliste sind
+        // lesbar, erst quick_check findet den Schaden.
+        val beschaedigt = File(dir, "beschaedigt.hcbackup")
+        beschaedigt.writeBytes(bytes.copyOf().also { it.fill(0, 30 * 4096, 31 * 4096) })
+        // Abgeschnitten: das merkt SQLite schon beim Lesen der Tabellenliste.
+        val abgeschnitten = File(dir, "abgeschnitten.hcbackup")
+        abgeschnitten.writeBytes(bytes.copyOf(bytes.size - 2 * 4096))
+
+        for ((datei, meldung) in listOf(
+            beschaedigt to "Die Sicherungsdatei ist beschädigt.",
+            abgeschnitten to "Das ist keine gültige Sicherungsdatei.",
+        )) {
+            val ergebnis = Backup.import(
+                databaseFile = dbFile,
+                workDir = File(dir, "arbeit"),
+                source = datei.inputStream(),
+                closeDatabase = { db!!.close() },
+            )
+            assertTrue(ergebnis.isFailure, datei.name)
+            assertEquals(meldung, ergebnis.exceptionOrNull()?.message, datei.name)
+
+            neuOeffnen()
+            assertEquals(401, db!!.invoiceDao().getInvoiceWithEntries("07").first()?.entries?.size)
+        }
+    }
+
+    @Test
+    fun `nach dem Einlesen liegt der alte Stand als Vor-Import-Kopie da`() = runTest {
+        fuelleDatenbank("07")
+        val sicherung = File(dir, "sicherung.hcbackup")
+        Backup.export(db!!, dbFile, sicherung.outputStream()).getOrThrow()
+
+        db!!.invoiceDao().deleteInvoice("07")
+        fuelleDatenbank("08")
+
+        Backup.import(
+            databaseFile = dbFile,
+            workDir = File(dir, "arbeit"),
+            source = sicherung.inputStream(),
+            closeDatabase = { db!!.close() },
+        ).getOrThrow()
+
+        val kopie = Backup.vorImportKopie(dbFile)
+        assertTrue(kopie.isFile, "Vor-Import-Kopie fehlt")
+        val alt = createDesktopDatabase(kopie.absolutePath)
+        try {
+            assertEquals(listOf("08"), alt.invoiceDao().getAllInvoiceNumbers().first())
+        } finally {
+            alt.close()
+        }
+        neuOeffnen()
+        assertEquals(listOf("07"), db!!.invoiceDao().getAllInvoiceNumbers().first())
+    }
+
+    @Test
     fun `der Dateiname traegt das Datum`() {
         assertEquals(
             "HonorarCraft_Sicherung_2026-09-13.hcbackup",

@@ -59,7 +59,8 @@ private class AndroidPlatformServices(
     }
 
     override fun describePdfFolder(pdfPath: String): String {
-        if (pdfPath.isBlank()) return "Dokumente/HonorarCraft"
+        // Ein Dateipfad stammt aus einer Sicherung vom Desktop und gilt hier als leer.
+        if (!pdfPath.startsWith("content://")) return "Dokumente/HonorarCraft"
         val uri = runCatching { Uri.parse(pdfPath) }.getOrNull() ?: return pdfPath
         // Der Baum-Bezeichner sieht aus wie "primary:Documents/Rechnungen".
         val bezeichner = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
@@ -122,22 +123,31 @@ private class AndroidPlatformServices(
 
         // Hat der Nutzer einen Ordner gewaehlt, wird dorthin geschrieben.
         val gewaehlt = company.pdfPath.takeIf { it.startsWith("content://") }
+        var hinweis = ""
         if (gewaehlt != null) {
-            val baum = Uri.parse(gewaehlt)
-            val ordnerUri = DocumentsContract.buildDocumentUriUsingTree(
-                baum,
-                DocumentsContract.getTreeDocumentId(baum),
-            )
-            val ziel = DocumentsContract.createDocument(
-                context.contentResolver, ordnerUri, "application/pdf", dateiname
-            )
-            checkNotNull(ziel) { "Datei konnte im gewählten Ordner nicht angelegt werden" }
-            val strom = withContext(Dispatchers.IO) {
-                context.contentResolver.openOutputStream(ziel)
+            // Scheitert schon das Anlegen (Zugriffsrecht weg, Ordner geloescht, Sicherung von
+            // einem anderen Geraet), geht es im MediaStore weiter statt gar nicht.
+            val ziel = runCatching {
+                val baum = Uri.parse(gewaehlt)
+                val ordnerUri = DocumentsContract.buildDocumentUriUsingTree(
+                    baum,
+                    DocumentsContract.getTreeDocumentId(baum),
+                )
+                DocumentsContract.createDocument(
+                    context.contentResolver, ordnerUri, "application/pdf", dateiname
+                )
+            }.onFailure {
+                logError("PlatformServices", "Gewählter Ordner nicht erreichbar", it)
+            }.getOrNull()
+            if (ziel != null) {
+                val strom = withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(ziel)
+                }
+                checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
+                createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
+                return@runCatching describePdfFolder(gewaehlt)
             }
-            checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
-            createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
-            return@runCatching describePdfFolder(gewaehlt)
+            hinweis = " — der gewählte Ordner ist nicht erreichbar, bitte unter „Daten“ neu wählen"
         }
 
         val ordner = "${Environment.DIRECTORY_DOCUMENTS}/HonorarCraft"
@@ -153,7 +163,7 @@ private class AndroidPlatformServices(
         val strom = withContext(Dispatchers.IO) { resolver.openOutputStream(ziel) }
         checkNotNull(strom) { "Zieldatei konnte nicht geöffnet werden" }
         createInvoicePdf(invoice, company, formattedInvoiceNumber, strom)
-        ordner
+        "Dokumente/HonorarCraft$hinweis"
     }.onFailure { logError("PlatformServices", "PDF konnte nicht geschrieben werden", it) }
 
     override fun restartApp() {
