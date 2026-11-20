@@ -732,12 +732,26 @@ fun SectionHeader(text: String) {
     )
 }
 
+/**
+ * Einzeiliges Eingabefeld. Ein Zeilenumbruch im Namen landete früher in der Datenbank und
+ * ließ das Desktop-PDF scheitern; eingefügte Umbrüche und Tabulatoren werden deshalb zu
+ * Leerzeichen.
+ */
 @Composable
-fun DataField(label: String, value: String, onValueChange: (String) -> Unit) {
+fun DataField(
+    label: String,
+    value: String,
+    isError: Boolean = false,
+    supportingText: String? = null,
+    onValueChange: (String) -> Unit,
+) {
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { onValueChange(it.replace(Regex("[\\r\\n\\t]"), " ")) },
         label = { Text(label) },
+        singleLine = true,
+        isError = isError,
+        supportingText = supportingText?.let { { Text(it) } },
         modifier = Modifier.fillMaxWidth()
     )
 }

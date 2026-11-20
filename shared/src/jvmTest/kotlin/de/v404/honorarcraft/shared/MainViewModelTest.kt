@@ -362,4 +362,24 @@ class MainViewModelTest {
         assertEquals(ThemeMode.SYSTEM, vm.themeMode.value)
         assertEquals("", settings.getString(SettingsKeys.SELECTED_INVOICE_NUMBER, ""))
     }
+
+    // ---------- Fehlerbehebung 2.1.1 ----------
+
+    @Test
+    fun `Kunde und Firmendaten werden getrimmt gespeichert`() = test {
+        val vm = viewModel()
+        vm.saveCustomer(Customer(nameOrOrga = " Kolping\n", cityName = "\tUlm "))
+        vm.saveCompanyData(
+            CompanyData(billerSecondName = "Muster \n", billerIban = " DE12 ", signaturePath = " /a.png ")
+        )
+        testScheduler.advanceUntilIdle()
+
+        val kunde = db.customerDao().getAllCustomers().first().single()
+        assertEquals("Kolping", kunde.nameOrOrga)
+        assertEquals("Ulm", kunde.cityName)
+        val firma = db.companyDao().getCompanyData().first()!!
+        assertEquals("Muster", firma.billerSecondName)
+        assertEquals("DE12", firma.billerIban)
+        assertEquals(" /a.png ", firma.signaturePath, "Pfade bleiben unangetastet")
+    }
 }

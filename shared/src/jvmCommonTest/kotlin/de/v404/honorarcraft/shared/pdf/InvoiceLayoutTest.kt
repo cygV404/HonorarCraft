@@ -181,4 +181,49 @@ class InvoiceLayoutTest {
             .single { it.text == "Ein sehr langes Unterrichtsfach" }
         assertTrue((fach.clipWidth ?: 0f) > 0f)
     }
+
+    @Test
+    fun `Zeilenumbrueche und Tabulatoren kommen nicht ins PDF`() {
+        val modell = InvoiceLayout.build(
+            invoice = InvoiceWithEntries(
+                rechnung.copy(eduCenter = "Biberach\r\nEhingen"),
+                listOf(position("09.01.2026", "1.0", "Mathe\tKlasse 7\n")),
+                kunde.copy(nameOrOrga = "Kolping\nBerufsbildung", cityName = "\tStuttgart "),
+            ),
+            company = firma.copy(billerSecondName = "Muster\nmann", billerCityName = "Ulm\n"),
+            formattedInvoiceNumber = "13",
+            measurer = measurer,
+            today = LocalDate.of(2026, 9, 13),
+        )
+        val texte = modell.texte()
+        assertTrue(
+            texte.none { text -> text.any { it.isISOControl() } },
+            "Steuerzeichen im PDF: $texte"
+        )
+        assertTrue(texte.any { it == "Kolping Berufsbildung" }, "$texte")
+        assertTrue(texte.any { it == "Mathe Klasse 7" }, "$texte")
+        assertTrue(texte.any { it == "70010 Stuttgart" }, "$texte")
+    }
+
+    @Test
+    fun `23 und 23,00 sind derselbe Satz`() {
+        val texte = baue(
+            position("09.01.2026", "3.0", "Mathematik", satz = "23"),
+            position("14.01.2026", "3.0", "Deutsch", satz = "23.00"),
+        ).texte()
+        assertTrue(texte.none { it.contains("verschiedene Sätze") }, "$texte")
+        assertTrue(texte.any { it.contains("23,00 € Honorar/UE") }, "$texte")
+    }
+
+    @Test
+    fun `der Zeitraum reicht bis zum Monat der letzten Position`() {
+        val texte = baue(
+            position("03.02.2026", "1.0", "Deutsch"),
+            position("21.01.2026", "1.0", "Mathematik"),
+        ).texte()
+        assertTrue(
+            texte.any { it.contains("von 01.01.2026 bis 28.02.2026") },
+            "Zeitraum falsch: $texte"
+        )
+    }
 }

@@ -57,6 +57,7 @@ import de.v404.honorarcraft.ui.theme.HonorarCraftTheme
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.SimpleDateFormat
+import java.io.File
 import java.util.Locale
 import de.v404.honorarcraft.shared.MainViewModel
 import de.v404.honorarcraft.shared.data.CompanyData
@@ -97,16 +98,28 @@ fun EntryWindowScreen(
         onInvoiceSelect = { mainViewModel.setSelectedInvoiceNumber(it) },
         onGeneratePdf = { cd, iwe ->
             scope.launch {
+                // Nach dem Einlesen einer Sicherung von einem anderen Gerät zeigt der Pfad
+                // ins Leere. Das PDF entsteht trotzdem, nur ohne Unterschrift.
+                if (cd.signaturePath.isNotBlank() && !File(cd.signaturePath).isFile) {
+                    mainViewModel.showMessage(
+                        "Die Unterschrift wurde nicht gefunden. Bitte unter „Daten“ neu auswählen."
+                    )
+                }
                 mainViewModel.setLoading(true)
-                val ergebnis = platform.saveInvoicePdf(iwe, cd, formattedInvoiceNumber)
-                mainViewModel.setLoading(false)
+                val ergebnis = try {
+                    platform.saveInvoicePdf(iwe, cd, formattedInvoiceNumber)
+                } finally {
+                    mainViewModel.setLoading(false)
+                }
                 ergebnis.onSuccess { ort ->
                     mainViewModel.showMessage("PDF gespeichert unter $ort")
                     // Erst nach dem erfolgreichen Schreiben hochzaehlen, sonst springt die
                     // Nummer bei einem Fehlschlag weiter.
                     mainViewModel.incrementInvoiceNumber()
-                }.onFailure {
-                    mainViewModel.showMessage("PDF konnte nicht erstellt werden")
+                }.onFailure { fehler ->
+                    mainViewModel.showMessage(
+                        "PDF konnte nicht erstellt werden: ${fehler.message ?: fehler::class.simpleName}"
+                    )
                 }
             }
         },

@@ -306,8 +306,17 @@ class MainViewModel(
 
     /** Legt einen Kunden an (`id = 0`) oder ändert ihn. Ein neuer Kunde wird gleich gewählt. */
     fun saveCustomer(customer: Customer) {
+        val getrimmt = customer.copy(
+            nameOrOrga = customer.nameOrOrga.trim(),
+            firstName = customer.firstName.trim(),
+            street = customer.street.trim(),
+            streetNumber = customer.streetNumber.trim(),
+            plz = customer.plz.trim(),
+            mailBox = customer.mailBox.trim(),
+            cityName = customer.cityName.trim(),
+        )
         viewModelScope.launch {
-            val id = customerDao.upsertCustomer(customer)
+            val id = customerDao.upsertCustomer(getrimmt)
             if (customer.id == 0L && id > 0) merkeKunde(id)
         }
     }
@@ -468,9 +477,21 @@ class MainViewModel(
     }
 
     fun saveCompanyData(data: CompanyData) {
+        // Pfade (Unterschrift, Ablageordner) bleiben, wie sie sind.
+        val getrimmt = data.copy(
+            billerSecondName = data.billerSecondName.trim(),
+            billerFirstName = data.billerFirstName.trim(),
+            billerStreetName = data.billerStreetName.trim(),
+            billerStreetNumber = data.billerStreetNumber.trim(),
+            billerPlzNumber = data.billerPlzNumber.trim(),
+            billerCityName = data.billerCityName.trim(),
+            taxNumber = data.taxNumber.trim(),
+            billerIban = data.billerIban.trim(),
+            billerBIC = data.billerBIC.trim(),
+        )
         viewModelScope.launch {
             _isLoading.value = true
-            companyDao.insertCompanyData(data)
+            companyDao.insertCompanyData(getrimmt)
             _isLoading.value = false
             _hasUnsavedChanges.value = false
         }
